@@ -19,6 +19,13 @@ import (
 func GetAndValidateRequest(c *gin.Context, format types.RelayFormat) (request dto.Request, err error) {
 	relayMode := relayconstant.Path2RelayMode(c.Request.URL.Path)
 
+	if relayMode == relayconstant.RelayModeCodingPlanVLM ||
+		relayMode == relayconstant.RelayModeCodingPlanSearch {
+		return &dto.GeneralOpenAIRequest{
+			Model: relayconstant.DefaultCodingPlanVLMModel,
+		}, nil
+	}
+
 	switch format {
 	case types.RelayFormatOpenAI:
 		request, err = GetAndValidateTextRequest(c, relayMode)

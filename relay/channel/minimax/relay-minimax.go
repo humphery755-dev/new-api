@@ -25,6 +25,10 @@ func GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 			return fmt.Sprintf("%s/v1/image_generation", baseUrl), nil
 		case constant.RelayModeAudioSpeech:
 			return fmt.Sprintf("%s/v1/t2a_v2", baseUrl), nil
+		case constant.RelayModeCodingPlanVLM:
+			return fmt.Sprintf("%s/v1/coding_plan/vlm", baseUrl), nil
+		case constant.RelayModeCodingPlanSearch:
+			return fmt.Sprintf("%s/v1/coding_plan/search", baseUrl), nil
 		default:
 			return "", fmt.Errorf("unsupported relay mode: %d", info.RelayMode)
 		}

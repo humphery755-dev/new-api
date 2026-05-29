@@ -52,7 +52,12 @@ const (
 	RelayModeGemini
 
 	RelayModeResponsesCompact
+
+	RelayModeCodingPlanVLM
+	RelayModeCodingPlanSearch
 )
+
+const DefaultCodingPlanVLMModel = "MiniMax-M2.7"
 
 func Path2RelayMode(path string) int {
 	relayMode := RelayModeUnknown
@@ -76,6 +81,10 @@ func Path2RelayMode(path string) int {
 		relayMode = RelayModeResponsesCompact
 	} else if strings.HasPrefix(path, "/v1/responses") {
 		relayMode = RelayModeResponses
+	} else if strings.HasPrefix(path, "/v1/coding_plan/search") {
+		relayMode = RelayModeCodingPlanSearch
+	} else if strings.HasPrefix(path, "/v1/coding_plan/vlm") {
+		relayMode = RelayModeCodingPlanVLM
 	} else if strings.HasPrefix(path, "/v1/audio/speech") {
 		relayMode = RelayModeAudioSpeech
 	} else if strings.HasPrefix(path, "/v1/audio/transcriptions") {

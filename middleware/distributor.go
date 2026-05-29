@@ -340,6 +340,10 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			modelRequest.Model = "text-moderation-stable"
 		}
 	}
+	if strings.HasPrefix(c.Request.URL.Path, "/v1/coding_plan/vlm") ||
+		strings.HasPrefix(c.Request.URL.Path, "/v1/coding_plan/search") {
+		modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, relayconstant.DefaultCodingPlanVLMModel)
+	}
 	if strings.HasSuffix(c.Request.URL.Path, "embeddings") {
 		if modelRequest.Model == "" {
 			modelRequest.Model = c.Param("model")

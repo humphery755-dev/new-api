@@ -132,6 +132,16 @@ func SetRelayRouter(router *gin.Engine) {
 			controller.Relay(c, types.RelayFormatOpenAIAudio)
 		})
 
+		// coding_plan_vlm route (MiniMax)
+		httpRouter.POST("/coding_plan/vlm", func(c *gin.Context) {
+			controller.Relay(c, types.RelayFormatOpenAI)
+		})
+
+		// coding_plan_search route (MiniMax)
+		httpRouter.POST("/coding_plan/search", func(c *gin.Context) {
+			controller.Relay(c, types.RelayFormatOpenAI)
+		})
+
 		// rerank related routes
 		httpRouter.POST("/rerank", func(c *gin.Context) {
 			controller.Relay(c, types.RelayFormatRerank)
