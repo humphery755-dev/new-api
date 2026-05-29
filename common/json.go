@@ -59,3 +59,20 @@ func JsonRawMessageToString(data json.RawMessage) string {
 	}
 	return value
 }
+// DeleteJSONField removes a key from a JSON object. Returns the unchanged data if
+// the input is not a JSON object or the key is not present.
+func DeleteJSONField(data []byte, key string) []byte {
+	var m map[string]json.RawMessage
+	if err := Unmarshal(data, &m); err != nil {
+		return data
+	}
+	if _, ok := m[key]; !ok {
+		return data
+	}
+	delete(m, key)
+	result, err := Marshal(m)
+	if err != nil {
+		return data
+	}
+	return result
+}
