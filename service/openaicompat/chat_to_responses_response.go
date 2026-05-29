@@ -39,7 +39,6 @@ func ChatCompletionsResponseToResponsesResponse(chatResp *dto.OpenAITextResponse
 
 	var output []dto.ResponsesOutput
 
-	// reasoning content — uses "content" field matching va-ai-api-bridge format.
 	// DeepSeek thinking mode requires reasoning_content passthrough in multi-turn conversations.
 	reasoning := message.GetReasoningContent()
 	if reasoning != "" {

@@ -53,7 +53,6 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 	// reasoning items are associated with following function_calls (not assistant text
 	// messages), matching va-ai-api-bridge's pending_tool_calls accumulation pattern.
 
-	// stream_options for stream mode
 	if lo.FromPtrOr(req.Stream, false) {
 		out.StreamOptions = &dto.StreamOptions{IncludeUsage: true}
 	}
@@ -64,7 +63,6 @@ func ResponsesRequestToChatCompletionsRequest(req *dto.OpenAIResponsesRequest) (
 func responsesInputToChatMessages(inputRaw json.RawMessage, instructionsRaw json.RawMessage) ([]dto.Message, error) {
 	var messages []dto.Message
 
-	// instructions → system message
 	if len(instructionsRaw) > 0 {
 		var instructions string
 		if err := common.Unmarshal(instructionsRaw, &instructions); err == nil && strings.TrimSpace(instructions) != "" {
@@ -276,7 +274,6 @@ func extractArguments(arg any) string {
 	if arg == nil {
 		return ""
 	}
-	// arguments can be a JSON string or a JSON object
 	switch v := arg.(type) {
 	case string:
 		return v

@@ -20,15 +20,7 @@ func codingPlanVLMHandler(c *gin.Context, resp *http.Response, info *relaycommon
 		return nil, types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError)
 	}
 
-	for k, v := range resp.Header {
-		for _, vv := range v {
-			c.Writer.Header().Add(k, vv)
-		}
-	}
-	c.Writer.WriteHeader(resp.StatusCode)
-	if _, err := c.Writer.Write(body); err != nil {
-		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
-	}
+	service.IOCopyBytesGracefully(c, resp, body)
 
 	return &dto.Usage{}, nil
 }
