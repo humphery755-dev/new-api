@@ -57,7 +57,7 @@ const (
 	RelayModeCodingPlanSearch
 )
 
-const DefaultCodingPlanVLMModel = "MiniMax-M2.7"
+const DefaultCodingPlanVLMModel = "MiniMax-CodingPlan"
 
 func Path2RelayMode(path string) int {
 	relayMode := RelayModeUnknown
