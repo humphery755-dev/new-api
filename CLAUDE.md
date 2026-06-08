@@ -135,3 +135,11 @@ For request structs that are parsed from client JSON and then re-marshaled to up
 ### Rule 7: Billing Expression System — Read `pkg/billingexpr/expr.md`
 
 When working on tiered/dynamic billing (expression-based pricing), you MUST read `pkg/billingexpr/expr.md` first. It documents the design philosophy, expression language (variables, functions, examples), full system architecture (editor → storage → pre-consume → settlement → log display), token normalization rules (`p`/`c` auto-exclusion), quota conversion, and expression versioning. All code changes to the billing expression system must follow the patterns described in that document.
+
+### Rule 8: Open Source Maintenance — Add Over Modify
+
+When making changes to this codebase:
+
+- **Prefer adding new code** over modifying existing code. New functionality should go in new files or new functions rather than expanding existing ones.
+- **Minimize insertion points** in existing files. If you must touch an existing file, make it a single, focused insertion rather than scattered changes.
+- **Analyze impact before changing** existing logic. Understand all callers, dependents, and edge cases before modifying any shared utility, middleware, or core flow. It documents the design philosophy, expression language (variables, functions, examples), full system architecture (editor → storage → pre-consume → settlement → log display), token normalization rules (`p`/`c` auto-exclusion), quota conversion, and expression versioning. All code changes to the billing expression system must follow the patterns described in that document.
