@@ -142,4 +142,12 @@ When making changes to this codebase:
 
 - **Prefer adding new code** over modifying existing code. New functionality should go in new files or new functions rather than expanding existing ones.
 - **Minimize insertion points** in existing files. If you must touch an existing file, make it a single, focused insertion rather than scattered changes.
-- **Analyze impact before changing** existing logic. Understand all callers, dependents, and edge cases before modifying any shared utility, middleware, or core flow. It documents the design philosophy, expression language (variables, functions, examples), full system architecture (editor → storage → pre-consume → settlement → log display), token normalization rules (`p`/`c` auto-exclusion), quota conversion, and expression versioning. All code changes to the billing expression system must follow the patterns described in that document.
+- **Analyze impact before changing** existing logic. Understand all callers, dependents, and edge cases before modifying any shared utility, middleware, or core flow.
+
+### Rule 9: Pull Requests — Identify AI-Generated Contributions When Appropriate
+
+When creating a pull request:
+
+- First compare the current git user (`git config user.name` / `git config user.email`) with the repository's historical core developers (for example, the recurring top authors in `git log`). Do not change git config.
+- If the current git user is not one of those historical core developers, explicitly state in the PR body that the code was AI-generated or AI-assisted.
+- Always use the repository PR template at `.github/PULL_REQUEST_TEMPLATE.md` when drafting the PR title/body. Preserve the template structure and fill in the relevant sections instead of replacing it with an ad hoc format.
