@@ -21,6 +21,74 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// normalizeClaudeSystemMessages moves any message with role "system" from the
+// messages array to the top-level System field. Some providers (e.g. SGLang)
+// strictly validate message roles to only "user" or "assistant", rejecting
+// "system" inside the messages array.
+func normalizeClaudeSystemMessages(request *dto.ClaudeRequest) {
+	if request == nil || len(request.Messages) == 0 {
+		return
+	}
+
+	var extraSystem []dto.ClaudeMediaMessage
+	var keepMessages []dto.ClaudeMessage
+
+	for _, msg := range request.Messages {
+		if !strings.EqualFold(msg.Role, "system") {
+			keepMessages = append(keepMessages, msg)
+			continue
+		}
+		// Collect system content from messages array.
+		if msg.IsStringContent() {
+			if text := msg.GetStringContent(); text != "" {
+				extraSystem = append(extraSystem, dto.ClaudeMediaMessage{
+					Type: dto.ContentTypeText,
+					Text: common.GetPointer(text),
+				})
+			}
+		} else {
+			parsed, err := msg.ParseContent()
+			if err == nil {
+				for _, block := range parsed {
+					if block.Type == dto.ContentTypeText && block.GetText() == "" {
+						continue
+					}
+					extraSystem = append(extraSystem, block)
+				}
+			}
+		}
+	}
+
+	if len(extraSystem) == 0 {
+		request.Messages = keepMessages
+		return
+	}
+
+	// Merge with existing top-level System field.
+	var existing []dto.ClaudeMediaMessage
+	if request.System != nil {
+		if request.IsStringSystem() {
+			if s := request.GetStringSystem(); s != "" {
+				existing = append(existing, dto.ClaudeMediaMessage{
+					Type: dto.ContentTypeText,
+					Text: common.GetPointer(s),
+				})
+			}
+		} else {
+			existing = request.ParseSystem()
+		}
+	}
+
+	allSystem := append(existing, extraSystem...)
+	if len(allSystem) == 1 {
+		request.SetStringSystem(allSystem[0].GetText())
+	} else {
+		request.System = allSystem
+	}
+	request.Messages = keepMessages
+}
+
+
 func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
 
 	info.InitChannelMeta(c)
@@ -40,6 +108,8 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
+
+	normalizeClaudeSystemMessages(request)
 
 	adaptor := GetAdaptor(info.ApiType)
 	if adaptor == nil {
@@ -155,8 +225,23 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		if err != nil {
 			return types.NewErrorWithStatusCode(err, types.ErrorCodeReadRequestBodyFailed, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
 		}
-		info.UpstreamRequestBodySize = storage.Size()
-		requestBody = common.ReaderOnly(storage)
+
+		// When pass-through, we still normalize system messages so that strict
+		// validators (e.g. SGLang) that reject "system" in the messages array
+		// receive a spec-compliant request.
+		rawBody, readErr := io.ReadAll(storage)
+		if readErr != nil {
+			return types.NewErrorWithStatusCode(readErr, types.ErrorCodeReadRequestBodyFailed, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
+		}
+		var passReq dto.ClaudeRequest
+		if unmarshalErr := common.Unmarshal(rawBody, &passReq); unmarshalErr == nil {
+			normalizeClaudeSystemMessages(&passReq)
+			if marshaled, marshalErr := common.Marshal(&passReq); marshalErr == nil {
+				rawBody = marshaled
+			}
+		}
+		info.UpstreamRequestBodySize = int64(len(rawBody))
+		requestBody = io.NopCloser(strings.NewReader(string(rawBody)))
 	} else {
 		convertedRequest, err := adaptor.ConvertClaudeRequest(c, info, request)
 		if err != nil {
