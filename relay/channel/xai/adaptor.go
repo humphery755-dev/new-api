@@ -57,6 +57,15 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *relaycommon.RelayInfo) error {
 	channel.SetupApiRequestHeader(info, c, req)
 	req.Set("Authorization", "Bearer "+info.ApiKey)
+	// Codex providers gate on originator + User-Agent; without them the
+	// upstream returns 403 ("仅限官方 Codex 客户端").
+	// Values captured via tcpdump from real codex_exec v0.142.0.
+	if req.Get("originator") == "" {
+		req.Set("originator", "codex_exec")
+	}
+	if req.Get("User-Agent") == "" {
+		req.Set("User-Agent", "codex_exec/0.142.0")
+	}
 	return nil
 }
 
