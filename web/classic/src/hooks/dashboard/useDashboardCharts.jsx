@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import { useState, useCallback, useEffect } from 'react';
-import { initVChartSemiTheme } from '@visactor/vchart-semi-theme';
+import { ThemeManager } from '@visactor/vchart';
 import {
   modelColorMap,
   renderNumber,
@@ -609,9 +609,12 @@ export const useDashboardCharts = (
 
   // ========== 初始化图表主题 ==========
   useEffect(() => {
-    initVChartSemiTheme({
-      isWatchingThemeSwitch: true,
-    });
+    const mode =
+      document.documentElement.classList.contains('dark') ||
+      (localStorage.getItem('theme-mode') === 'dark')
+        ? 'dark'
+        : 'light';
+    ThemeManager.setCurrentTheme(mode);
   }, []);
 
   return {

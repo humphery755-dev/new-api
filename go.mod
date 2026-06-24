@@ -61,6 +61,7 @@ require (
 )
 
 require (
+	github.com/Azure/go-ntlmssp v0.1.1
 	github.com/waffo-com/waffo-pancake-sdk-go v0.3.1
 	gorm.io/driver/clickhouse v0.6.0
 )
