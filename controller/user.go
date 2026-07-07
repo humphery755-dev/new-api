@@ -342,6 +342,31 @@ func GetUser(c *gin.Context) {
 	return
 }
 
+func GetUserRestrictedQuotas(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	entries, err := model.GetUserRestrictedQuotas(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	total := 0
+	for _, e := range entries {
+		total += e.Quota
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"total":   total,
+			"entries": entries,
+		},
+	})
+}
+
 func GenerateAccessToken(c *gin.Context) {
 	id := c.GetInt("id")
 	user, err := model.GetUserById(id, true)
@@ -918,10 +943,11 @@ func CreateUser(c *gin.Context) {
 }
 
 type ManageRequest struct {
-	Id     int    `json:"id"`
-	Action string `json:"action"`
-	Value  int    `json:"value"`
-	Mode   string `json:"mode"`
+	Id       int    `json:"id"`
+	Action   string `json:"action"`
+	Value    int    `json:"value"`
+	Mode     string `json:"mode"`
+	Channels []int  `json:"channels"` // optional: restrict quota to specific channel IDs
 }
 
 // ManageUser Only admin user can do this
@@ -1000,12 +1026,20 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
-			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
-				common.ApiError(c, err)
-				return
+			if len(req.Channels) > 0 {
+				if err := model.CreateUserRestrictedQuota(user.Id, req.Value, req.Channels, "管理员赠送"); err != nil {
+					common.ApiError(c, err)
+					return
+				}
+			} else {
+				if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
+					common.ApiError(c, err)
+					return
+				}
 			}
 			recordManageAuditFor(c, user.Id, "user.quota_add", map[string]interface{}{
-				"quota": logger.LogQuota(req.Value),
+				"quota":    logger.LogQuota(req.Value),
+				"channels": req.Channels,
 			})
 		case "subtract":
 			if req.Value <= 0 {

@@ -62,7 +62,7 @@ import {
   sideDrawerFormClassName,
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
-import { createUser, updateUser, getUser, getGroups } from '../api'
+import { createUser, updateUser, getUser, getGroups, getUserRestrictedQuotas } from '../api'
 import { BINDING_FIELDS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
   userFormSchema,
@@ -91,6 +91,7 @@ export function UsersMutateDrawer({
   const { triggerRefresh } = useUsers()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [restrictedTotal, setRestrictedTotal] = useState(0)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -115,6 +116,11 @@ export function UsersMutateDrawer({
           form.reset(transformUserToFormDefaults(result.data))
         }
       })
+      getUserRestrictedQuotas(currentRow.id).then((res) => {
+        if (res.success && res.data) {
+          setRestrictedTotal(res.data.total)
+        }
+      }).catch(() => {})
     } else if (open && !isUpdate) {
       // For create, reset to defaults
       form.reset(USER_FORM_DEFAULT_VALUES)
@@ -390,6 +396,11 @@ export function UsersMutateDrawer({
                         <FormDescription>
                           {formatQuota(parseQuotaFromDollars(field.value || 0))}
                         </FormDescription>
+                        {restrictedTotal > 0 && (
+                          <FormDescription className='text-amber-600 dark:text-amber-400'>
+                            {t('Gifted Quota')}: {formatQuota(restrictedTotal)}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

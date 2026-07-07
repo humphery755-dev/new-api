@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
@@ -25,7 +25,11 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Dialog } from '@/components/dialog'
+import { getChannels } from '@/features/channels/api'
+import type { Channel } from '@/features/channels/types'
 import { adjustUserQuota } from '../api'
 import type { QuotaAdjustMode } from '../types'
 
@@ -42,10 +46,35 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
   const [mode, setMode] = useState<QuotaAdjustMode>('add')
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedChannels, setSelectedChannels] = useState<number[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [channelsOpen, setChannelsOpen] = useState(false)
 
   const { meta: currencyMeta } = getCurrencyDisplay()
   const currencyLabel = getCurrencyLabel()
   const tokensOnly = currencyMeta.kind === 'tokens'
+
+  useEffect(() => {
+    getChannels({ p: 1, page_size: 200 }).then((res) => {
+      if (res.success && res.data?.items) {
+        setChannels(res.data.items)
+      }
+    }).catch(() => {})
+  }, [])
+
+  const toggleChannel = (id: number) => {
+    setSelectedChannels((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    )
+  }
+
+  const toggleAllChannels = () => {
+    if (selectedChannels.length === channels.length) {
+      setSelectedChannels([])
+    } else {
+      setSelectedChannels(channels.map((c) => c.id))
+    }
+  }
 
   const amountValue = parseFloat(amount) || 0
   const quotaValue = parseQuotaFromDollars(Math.abs(amountValue))
@@ -80,6 +109,7 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
         action: 'add_quota',
         mode,
         value: mode === 'override' ? value : Math.abs(value),
+        ...(mode === 'add' && selectedChannels.length > 0 && { channels: selectedChannels }),
       })
       if (result.success) {
         toast.success(t('Quota adjusted successfully'))
@@ -100,6 +130,7 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
   const handleCancel = () => {
     setAmount('')
     setMode('add')
+    setSelectedChannels([])
     props.onOpenChange(false)
   }
 
@@ -173,6 +204,49 @@ export function UserQuotaDialog(props: UserQuotaDialogProps) {
             }}
           />
         </div>
+
+        {mode === 'add' && channels.length > 0 && (
+          <div className='space-y-2'>
+            <Label>{t('Channel Restriction')}</Label>
+            <Popover open={channelsOpen} onOpenChange={setChannelsOpen}>
+              <PopoverTrigger>
+                <Button type='button' variant='outline' className='w-full justify-start font-normal'>
+                  {selectedChannels.length === 0
+                    ? t('All channels (no restriction)')
+                    : t('{{count}} channel(s) selected', { count: selectedChannels.length })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align='start'
+                className='w-[280px] p-0'
+              >
+                <div className='max-h-[280px] overflow-y-auto p-2'>
+                  <label className='flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer'>
+                    <Checkbox
+                      checked={selectedChannels.length === channels.length}
+                      onCheckedChange={toggleAllChannels}
+                    />
+                    <span className='font-medium'>{t('All channels')}</span>
+                  </label>
+                  <div className='my-1 border-t' />
+                  {channels.map((ch) => (
+                    <label
+                      key={ch.id}
+                      className='flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer'
+                    >
+                      <Checkbox
+                        checked={selectedChannels.includes(ch.id)}
+                        onCheckedChange={() => toggleChannel(ch.id)}
+                      />
+                      <span>{ch.name}</span>
+                      <span className='ml-auto text-muted-foreground text-xs'>ID: {ch.id}</span>
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
       </div>
     </Dialog>
   )

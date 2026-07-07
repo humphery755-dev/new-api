@@ -237,6 +237,21 @@ func (s *BillingSession) reserveFunding(delta int) error {
 		}
 		funding.consumed += delta
 		return nil
+	case *RestrictedWalletFunding:
+		// Try restricted quotas first, matching PreConsume semantics.
+		restConsumed, restRecords, restErr := model.ConsumeRestrictedQuotaByChannels(funding.userId, funding.channelId, delta)
+		if restErr != nil {
+			return types.NewError(restErr, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
+		}
+		funding.restrictedRecords = append(funding.restrictedRecords, restRecords...)
+		remaining := delta - restConsumed
+		if remaining > 0 {
+			if err := model.DecreaseUserQuota(funding.userId, remaining, false); err != nil {
+				return types.NewError(err, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
+			}
+			funding.walletConsumed += remaining
+		}
+		return nil
 	case *SubscriptionFunding:
 		if err := model.PostConsumeUserSubscriptionDelta(funding.subscriptionId, int64(delta)); err != nil {
 			return types.NewErrorWithStatusCode(
@@ -260,6 +275,31 @@ func (s *BillingSession) rollbackFundingReserve(delta int) {
 			common.SysLog("error rolling back wallet funding reserve: " + err.Error())
 		} else {
 			funding.consumed -= delta
+		}
+	case *RestrictedWalletFunding:
+		// Refund to wallet first, then restricted — matching Settle semantics.
+		refund := delta
+		if funding.walletConsumed >= refund {
+			if err := model.IncreaseUserQuota(funding.userId, refund, false); err != nil {
+				common.SysLog("error rolling back wallet funding reserve: " + err.Error())
+			} else {
+				funding.walletConsumed -= refund
+			}
+		} else {
+			if funding.walletConsumed > 0 {
+				if err := model.IncreaseUserQuota(funding.userId, funding.walletConsumed, false); err != nil {
+					common.SysLog("error rolling back wallet funding reserve: " + err.Error())
+				}
+				refund -= funding.walletConsumed
+				funding.walletConsumed = 0
+			}
+			if refund > 0 && len(funding.restrictedRecords) > 0 {
+				if err := model.RollbackRestrictedQuota(funding.restrictedRecords); err != nil {
+					common.SysLog("error rolling back restricted quota reserve: " + err.Error())
+				} else {
+					funding.restrictedRecords = nil
+				}
+			}
 		}
 	case *SubscriptionFunding:
 		if err := model.PostConsumeUserSubscriptionDelta(funding.subscriptionId, -int64(delta)); err != nil {
@@ -368,7 +408,7 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 
 		session := &BillingSession{
 			relayInfo: relayInfo,
-			funding:   &WalletFunding{userId: relayInfo.UserId},
+			funding:   NewRestrictedWalletFunding(relayInfo),
 		}
 		if apiErr := session.preConsume(c, preConsumedQuota); apiErr != nil {
 			return nil, apiErr

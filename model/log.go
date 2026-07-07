@@ -64,7 +64,8 @@ const (
 	LogTypeSystem  = 4
 	LogTypeError   = 5
 	LogTypeRefund  = 6
-	LogTypeLogin   = 7
+	LogTypeLogin            = 7
+	LogTypeRestrictedQuota  = 8 // restricted quota operations (create/consume/refund)
 )
 
 func ensureLogRequestId(log *Log) {

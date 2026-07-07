@@ -142,6 +142,16 @@ export async function resetUserTwoFA(id: number): Promise<ApiResponse> {
 }
 
 /**
+ * Get user's restricted quotas summary
+ */
+export async function getUserRestrictedQuotas(
+  id: number
+): Promise<ApiResponse<{ total: number; entries: unknown[] }>> {
+  const res = await api.get(`/api/user/${id}/restricted_quotas`)
+  return res.data
+}
+
+/**
  * Get all available groups
  */
 export async function getGroups(): Promise<ApiResponse<string[]>> {
