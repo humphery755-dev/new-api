@@ -33,18 +33,16 @@ jobs:
         env:
           CI: ""
         run: |
-          cd web
-          bun install --frozen-lockfile
-          cd default
+          cd web/default
+          bun install
           DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Build Frontend (classic)
         env:
           CI: ""
         run: |
-          cd web
-          bun install --filter ./classic --frozen-lockfile
-          cd classic
+          cd web/classic
+          bun install
           VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Set up Go
@@ -93,18 +91,16 @@ jobs:
           CI: ""
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
-          cd web
-          bun install --frozen-lockfile
-          cd default
+          cd web/default
+          bun install
           DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Build Frontend (classic)
         env:
           CI: ""
         run: |
-          cd web
-          bun install --filter ./classic --frozen-lockfile
-          cd classic
+          cd web/classic
+          bun install
           VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Set up Go
@@ -150,18 +146,16 @@ jobs:
         env:
           CI: ""
         run: |
-          cd web
-          bun install --frozen-lockfile
-          cd default
+          cd web/default
+          bun install
           DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Build Frontend (classic)
         env:
           CI: ""
         run: |
-          cd web
-          bun install --filter ./classic --frozen-lockfile
-          cd classic
+          cd web/classic
+          bun install
           VITE_REACT_APP_VERSION=$VERSION bun run build
           cd ../..
       - name: Set up Go
