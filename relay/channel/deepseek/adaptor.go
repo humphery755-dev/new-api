@@ -15,7 +15,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/setting/reasoning"
-	openaicompat "github.com/QuantumNous/new-api/service/openaicompat"
+	openaicompat "github.com/QuantumNous/new-api/service/relayconvert"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 )
