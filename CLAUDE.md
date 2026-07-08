@@ -1,9 +1,8 @@
 # CLAUDE.md — Project Conventions for new-api
 
-## Overview
+@AGENTS.md
 
-This is an AI API gateway/proxy built with Go. It aggregates 40+ upstream AI providers (OpenAI, Claude, Gemini, Azure, AWS Bedrock, etc.) behind a unified API, with user management, billing, rate limiting, and an admin dashboard.
-
+## Claude Code
 ## Tech Stack
 
 - **Backend**: Go 1.22+, Gin web framework, GORM v2 ORM
@@ -159,5 +158,4 @@ When creating a pull request:
 
 - First compare the current git user (`git config user.name` / `git config user.email`) with the repository's historical core developers (for example, the recurring top authors in `git log`). Do not change git config.
 - First compare the current git user (`git config user.name` / `git config user.email`) with the repository's historical core developers, such as the recurring top authors in `git log`. Do not change git config.
-- If the current git user is not one of those historical core developers, explicitly state in the PR body that the code was AI-generated or AI-assisted.
-- Always use the repository PR template at `.github/PULL_REQUEST_TEMPLATE.md` when drafting the PR title/body. Preserve the template structure and fill in the relevant sections instead of replacing it with an ad hoc format.
+- Follow the shared project instructions imported from `AGENTS.md`.
