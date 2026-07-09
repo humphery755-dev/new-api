@@ -516,6 +516,8 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		info.UserSetting = userSetting
 	}
 
+	info.InitChannelMeta(c)
+
 	return info
 }
 

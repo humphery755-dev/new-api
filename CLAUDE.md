@@ -146,6 +146,8 @@ When working on tiered/dynamic billing (expression-based pricing), you MUST read
 
 ### Rule 8: Open Source Maintenance — Add Over Modify
 
+- **Upstream base**: `https://github.com/QuantumNous/new-api.git` — 最小化对上游代码的修改，以降低合并冲突。
+
 When making changes to this codebase:
 
 - **Prefer adding new code** over modifying existing code. New functionality should go in new files or new functions rather than expanding existing ones.

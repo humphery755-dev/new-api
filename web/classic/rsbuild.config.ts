@@ -47,10 +47,10 @@ export default defineConfig(({ envMode }) => {
           semiUiDir,
           'dist/css/semi.css',
         ),
-        // Pin date-fns to v2 for classic — date-fns-tz (used by semi-ui)
-        // is incompatible with the v4 hoisted from the default frontend.
-        'date-fns': path.resolve(__dirname, 'node_modules/date-fns'),
-        'date-fns/': path.resolve(__dirname, 'node_modules/date-fns/'),
+        // Pin date-fns to v2 (semi-ui/date-fns-tz incompatible with v4).
+        // Path goes up one level because bun hoists to workspace-root node_modules.
+        'date-fns': path.resolve(__dirname, '../node_modules/date-fns'),
+        'date-fns/': path.resolve(__dirname, '../node_modules/date-fns/'),
       },
     },
     html: {

@@ -20,6 +20,20 @@ import (
 // BillingSession — 统一计费会话
 // ---------------------------------------------------------------------------
 
+// fundingName returns a short label for the funding source type.
+func fundingName(f FundingSource) string {
+	switch f.(type) {
+	case *RestrictedWalletFunding:
+		return "restricted+wallet"
+	case *WalletFunding:
+		return "wallet"
+	case *SubscriptionFunding:
+		return "subscription"
+	default:
+		return fmt.Sprintf("%T", f)
+	}
+}
+
 // BillingSession 封装单次请求的预扣费/结算/退款生命周期。
 // 实现 relaycommon.BillingSettler 接口。
 type BillingSession struct {
@@ -190,9 +204,9 @@ func (s *BillingSession) preConsume(c *gin.Context, quota int) *types.NewAPIErro
 	if s.shouldTrust(c) {
 		s.trusted = true
 		effectiveQuota = 0
-		logger.LogInfo(c, fmt.Sprintf("用户 %d 额度充足, 信任且不需要预扣费 (funding=%s)", s.relayInfo.UserId, s.funding.Source()))
+		logger.LogInfo(c, fmt.Sprintf("用户 %d 额度充足, 信任且不需要预扣费 (funding=%s)", s.relayInfo.UserId, fundingName(s.funding)))
 	} else if effectiveQuota > 0 {
-		logger.LogInfo(c, fmt.Sprintf("用户 %d 需要预扣费 %s (funding=%s)", s.relayInfo.UserId, logger.FormatQuota(effectiveQuota), s.funding.Source()))
+		logger.LogInfo(c, fmt.Sprintf("用户 %d 需要预扣费 %s (funding=%s)", s.relayInfo.UserId, logger.FormatQuota(effectiveQuota), fundingName(s.funding)))
 	}
 
 	// ---- 1) 预扣令牌额度 ----
@@ -215,8 +229,11 @@ func (s *BillingSession) preConsume(c *gin.Context, quota int) *types.NewAPIErro
 		}
 		// TODO: model 层应定义哨兵错误（如 ErrNoActiveSubscription），用 errors.Is 替代字符串匹配
 		errMsg := err.Error()
-		if strings.Contains(errMsg, "no active subscription") || strings.Contains(errMsg, "subscription quota insufficient") {
-			return types.NewErrorWithStatusCode(fmt.Errorf("订阅额度不足或未配置订阅: %s", errMsg), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+		if strings.Contains(errMsg, "no active subscription") ||
+			strings.Contains(errMsg, "subscription quota insufficient") ||
+			strings.Contains(errMsg, "钱包余额不足") ||
+			strings.Contains(errMsg, "限定额度不足") {
+			return types.NewErrorWithStatusCode(fmt.Errorf("额度不足: %s", errMsg), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
 		}
 		return types.NewError(err, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
 	}
@@ -242,6 +259,13 @@ func (s *BillingSession) reserveFunding(delta int) error {
 		restConsumed, restRecords, restErr := model.ConsumeRestrictedQuotaByChannels(funding.userId, funding.channelId, delta)
 		if restErr != nil {
 			return types.NewError(restErr, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
+		}
+		// Partial match: reject, consistent with PreConsume.
+		if restConsumed > 0 && restConsumed < delta {
+			if rbErr := model.RollbackRestrictedQuota(restRecords); rbErr != nil {
+				_ = rbErr
+			}
+			return types.NewError(fmt.Errorf("限定额度不足: reserve 需要 %d, 可用 %d", delta, restConsumed), types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
 		}
 		funding.restrictedRecords = append(funding.restrictedRecords, restRecords...)
 		remaining := delta - restConsumed
@@ -386,25 +410,31 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 
 	pref := common.NormalizeBillingPreference(relayInfo.UserSetting.BillingPreference)
 
-	// 钱包路径需要先检查用户额度
+	// 钱包路径。如果用户有限定额度，跳过钱包余额前置检查，交由
+	// RestrictedWalletFunding.PreConsume 统一处理（限定额度 → 钱包回退）。
 	tryWallet := func() (*BillingSession, *types.NewAPIError) {
-		userQuota, err := model.GetUserQuota(relayInfo.UserId, false)
-		if err != nil {
-			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+		hasRestricted := model.HasUserRestrictedQuota(relayInfo.UserId)
+
+		// 没有限定额度时，必须先检查钱包余额；有限定额度时交由 funding 内部校验。
+		if !hasRestricted {
+			userQuota, err := model.GetUserQuota(relayInfo.UserId, false)
+			if err != nil {
+				return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+			}
+			if userQuota <= 0 {
+				return nil, types.NewErrorWithStatusCode(
+					fmt.Errorf("用户额度不足, 剩余额度: %s", logger.FormatQuota(userQuota)),
+					types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
+					types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+			}
+			if userQuota-preConsumedQuota < 0 {
+				return nil, types.NewErrorWithStatusCode(
+					fmt.Errorf("预扣费额度失败, 用户剩余额度: %s, 需要预扣费额度: %s", logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
+					types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
+					types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+			}
+			relayInfo.UserQuota = userQuota
 		}
-		if userQuota <= 0 {
-			return nil, types.NewErrorWithStatusCode(
-				fmt.Errorf("用户额度不足, 剩余额度: %s", logger.FormatQuota(userQuota)),
-				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
-				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-		}
-		if userQuota-preConsumedQuota < 0 {
-			return nil, types.NewErrorWithStatusCode(
-				fmt.Errorf("预扣费额度失败, 用户剩余额度: %s, 需要预扣费额度: %s", logger.FormatQuota(userQuota), logger.FormatQuota(preConsumedQuota)),
-				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
-				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-		}
-		relayInfo.UserQuota = userQuota
 
 		session := &BillingSession{
 			relayInfo: relayInfo,
@@ -443,7 +473,7 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		return trySubscription()
 	case "wallet_only":
 		return tryWallet()
-	case "wallet_first":
+	case "restricted_first", "wallet_first":
 		session, err := tryWallet()
 		if err != nil {
 			if err.GetErrorCode() == types.ErrorCodeInsufficientUserQuota {

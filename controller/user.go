@@ -524,6 +524,7 @@ func GetSelf(c *gin.Context) {
 		"aff_count":         user.AffCount,
 		"aff_quota":         user.AffQuota,
 		"aff_history_quota": user.AffHistoryQuota,
+			"restricted_quota": model.GetUserRemainingRestrictedQuota(id),
 		"inviter_id":        user.InviterId,
 		"linux_do_id":       user.LinuxDOId,
 		"setting":           user.Setting,

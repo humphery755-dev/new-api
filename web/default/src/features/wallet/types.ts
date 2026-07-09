@@ -238,6 +238,8 @@ export interface UserWalletData {
   aff_quota: number
   /** Total affiliate quota earned (historical) */
   aff_history_quota: number
+  /** Remaining restricted (gifted) quota */
+  restricted_quota: number
   /** Number of successful affiliate invites */
   aff_count: number
   /** User group */

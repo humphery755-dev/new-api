@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 )
@@ -29,12 +32,31 @@ func (r *RestrictedWalletFunding) PreConsume(amount int) error {
 	}
 	r.restrictedRecords = records
 
+	// 限定渠道匹配到了则只能用限定额度，不够就拒绝，不走钱包
+	if consumed > 0 && consumed < amount {
+		if rbErr := model.RollbackRestrictedQuota(records); rbErr != nil {
+			_ = rbErr
+		}
+		return fmt.Errorf("限定额度不足: 需要 %s, 可用 %s", logger.LogQuota(amount), logger.LogQuota(consumed))
+	}
+	// 未匹配到限定额度 → 走钱包
 	remaining := amount - consumed
 	if remaining > 0 {
-		if err := model.DecreaseUserQuota(r.userId, remaining, false); err != nil {
-			// Rollback restricted quota consumption on failure.
+		userQuota, err := model.GetUserQuota(r.userId, false)
+		if err != nil {
 			if rbErr := model.RollbackRestrictedQuota(records); rbErr != nil {
-				// Log but don't mask the original error.
+				_ = rbErr
+			}
+			return err
+		}
+		if userQuota < remaining {
+			if rbErr := model.RollbackRestrictedQuota(records); rbErr != nil {
+				_ = rbErr
+			}
+			return fmt.Errorf("钱包余额不足: 剩余 %s, 需要 %s", logger.LogQuota(userQuota), logger.LogQuota(remaining))
+		}
+		if err := model.DecreaseUserQuota(r.userId, remaining, false); err != nil {
+			if rbErr := model.RollbackRestrictedQuota(records); rbErr != nil {
 				_ = rbErr
 			}
 			return err

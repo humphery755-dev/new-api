@@ -87,6 +87,8 @@ function getBillingPreferenceLabel(
       return t('Subscription Only')
     case 'wallet_only':
       return t('Wallet Only')
+    case 'restricted_first':
+      return t('Restricted First')
     default:
       return preference
   }
@@ -305,6 +307,10 @@ export function SubscriptionPlansCard({
               <Select
                 items={[
                   {
+                    value: 'restricted_first',
+                    label: getBillingPreferenceLabel('restricted_first', t),
+                  },
+                  {
                     value: 'subscription_first',
                     label: (
                       <>
@@ -341,6 +347,9 @@ export function SubscriptionPlansCard({
                 </SelectTrigger>
                 <SelectContent alignItemWithTrigger={false}>
                   <SelectGroup>
+                    <SelectItem value='restricted_first'>
+                      {getBillingPreferenceLabel('restricted_first', t)}
+                    </SelectItem>
                     <SelectItem
                       value='subscription_first'
                       disabled={disablePref}

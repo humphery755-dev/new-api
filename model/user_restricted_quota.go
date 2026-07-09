@@ -168,9 +168,25 @@ func GetUserRestrictedQuotas(userId int) ([]UserRestrictedQuota, error) {
 
 // HasUserRestrictedQuota checks if a user has any active restricted quota.
 func HasUserRestrictedQuota(userId int) bool {
+	if DB == nil {
+		return false
+	}
 	var count int64
 	DB.Model(&UserRestrictedQuota{}).Where("user_id = ? AND quota > 0", userId).Count(&count)
 	return count > 0
+}
+
+// GetUserRemainingRestrictedQuota returns the total remaining restricted quota for a user.
+func GetUserRemainingRestrictedQuota(userId int) int {
+	if DB == nil {
+		return 0
+	}
+	var total int
+	DB.Model(&UserRestrictedQuota{}).
+		Where("user_id = ? AND quota > 0", userId).
+		Select("COALESCE(SUM(quota), 0)").
+		Scan(&total)
+	return total
 }
 
 func formatChannelList(channels []int) string {
