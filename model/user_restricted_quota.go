@@ -189,6 +189,65 @@ func GetUserRemainingRestrictedQuota(userId int) int {
 	return total
 }
 
+// RestrictedQuotaSummary holds aggregated restricted quota info for a user.
+type RestrictedQuotaSummary struct {
+	Quota    int    // total remaining restricted quota
+	Channels string // JSON array of unique channel IDs, e.g. "[1,2,3]"
+}
+
+// GetUsersRestrictedQuotaSummaryMap returns a map of userId -> RestrictedQuotaSummary
+// for batch enrichment of user list responses.
+func GetUsersRestrictedQuotaSummaryMap(userIds []int) map[int]RestrictedQuotaSummary {
+	if DB == nil || len(userIds) == 0 {
+		return nil
+	}
+
+	var entries []UserRestrictedQuota
+	if err := DB.Where("user_id IN ? AND quota > 0", userIds).Order("id ASC").Find(&entries).Error; err != nil {
+		return nil
+	}
+
+	type accum struct {
+		quota    int
+		channels map[int]bool
+	}
+	acc := make(map[int]*accum)
+
+	for _, e := range entries {
+		a, ok := acc[e.UserId]
+		if !ok {
+			a = &accum{channels: make(map[int]bool)}
+			acc[e.UserId] = a
+		}
+		a.quota += e.Quota
+
+		var channels []int
+		if err := common.Unmarshal([]byte(e.AllowedChannels), &channels); err == nil {
+			for _, ch := range channels {
+				a.channels[ch] = true
+			}
+		}
+	}
+
+	result := make(map[int]RestrictedQuotaSummary, len(acc))
+	for userId, a := range acc {
+		summary := RestrictedQuotaSummary{Quota: a.quota}
+		if len(a.channels) > 0 {
+			chList := make([]int, 0, len(a.channels))
+			for ch := range a.channels {
+				chList = append(chList, ch)
+			}
+			chJSON, err := common.Marshal(chList)
+			if err == nil {
+				summary.Channels = string(chJSON)
+			}
+		}
+		result[userId] = summary
+	}
+
+	return result
+}
+
 func formatChannelList(channels []int) string {
 	strs := make([]string, len(channels))
 	for i, ch := range channels {

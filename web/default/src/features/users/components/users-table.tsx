@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -29,6 +30,7 @@ import {
 } from '@/components/data-table'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { getChannels } from '@/features/channels/api'
 
 import { getUsers, searchUsers } from '../api'
 import {
@@ -50,9 +52,23 @@ function isDisabledUserRow(user: User) {
 
 export function UsersTable() {
   const { t } = useTranslation()
-  const columns = useUsersColumns()
   const { refreshTrigger } = useUsers()
   const isMobile = useMediaQuery('(max-width: 640px)')
+
+  // Fetch channels once for name resolution in restricted quota display.
+  const { data: channelsData } = useQuery({
+    queryKey: ['channels', 'all'],
+    queryFn: async () => {
+      const res = await getChannels({ p: 1, page_size: 500 })
+      return res.success ? (res.data?.items ?? []) : []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+  const channelMap = useMemo(
+    () => new Map((channelsData ?? []).map((c) => [c.id, c.name])),
+    [channelsData],
+  )
+  const columns = useUsersColumns(channelMap)
 
   const {
     globalFilter,

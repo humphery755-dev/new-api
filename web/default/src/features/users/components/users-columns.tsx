@@ -42,6 +42,7 @@ import {
 } from '../constants'
 import type { User } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
+import { RestrictedQuotaCell } from './restricted-quota-cell'
 
 function getQuotaProgressColor(percentage: number): string {
   if (percentage <= 10) return '[&_[data-slot=progress-indicator]]:bg-rose-500'
@@ -49,8 +50,9 @@ function getQuotaProgressColor(percentage: number): string {
   return '[&_[data-slot=progress-indicator]]:bg-emerald-500'
 }
 
-export function useUsersColumns(): ColumnDef<User>[] {
+export function useUsersColumns(channelMap?: Map<number, string>): ColumnDef<User>[] {
   const { t } = useTranslation()
+  const chMap = channelMap || new Map()
   return [
     {
       id: 'select',
@@ -228,6 +230,25 @@ export function useUsersColumns(): ColumnDef<User>[] {
       },
       size: 170,
       meta: { mobileOrder: 40 },
+    },
+    {
+      id: 'restricted_quota',
+      accessorKey: 'restricted_quota',
+      header: t('Gifted Quota'),
+      cell: ({ row }) => {
+        const user = row.original
+        const quota = user.restricted_quota ?? 0
+        const channels = user.restricted_channels ?? '[]'
+        return (
+          <RestrictedQuotaCell
+            restrictedQuota={quota}
+            restrictedChannels={channels}
+            channelMap={chMap}
+          />
+        )
+      },
+      size: 190,
+      meta: { mobileHidden: true },
     },
     {
       accessorKey: 'group',

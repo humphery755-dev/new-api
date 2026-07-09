@@ -56,6 +56,16 @@ web/             — Frontend themes container
 
 ## Rules
 
+### Debugging — Code Evidence Over Speculation
+
+When debugging, every conclusion MUST be backed by reading the relevant source code, not by guessing or extrapolating from memory. Before stating a root cause, verify:
+
+- The exact code path the request took — trace function calls, not infer them
+- Error messages are not misleading — intermediate errors may be swallowed and replaced by later ones (e.g., a wallet-fallback failure masked by a subscription error)
+- Billing/funding paths can have multiple stages that each mutate the error; follow the full chain from entry point to user-visible message
+
+When a user reports an error, read the actual files in the call chain — do not describe what you "think" the code does.
+
 ### Common Code Quality
 
 - New code should stay direct and readable. Prefer early returns, clear branches, and well-named local variables to deep nesting or layered control flow.

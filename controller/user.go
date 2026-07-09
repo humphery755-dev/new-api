@@ -308,6 +308,21 @@ func GetAllUsers(c *gin.Context) {
 		return
 	}
 
+	// Enrich users with restricted quota summary.
+	if len(users) > 0 {
+		userIds := make([]int, len(users))
+		for i, u := range users {
+			userIds[i] = u.Id
+		}
+		summaryMap := model.GetUsersRestrictedQuotaSummaryMap(userIds)
+		for _, u := range users {
+			if s, ok := summaryMap[u.Id]; ok {
+				u.RestrictedQuota = s.Quota
+				u.RestrictedChannels = s.Channels
+			}
+		}
+	}
+
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(users)
 
@@ -335,6 +350,21 @@ func SearchUsers(c *gin.Context) {
 	if err != nil {
 		common.ApiError(c, err)
 		return
+	}
+
+	// Enrich users with restricted quota summary.
+	if len(users) > 0 {
+		userIds := make([]int, len(users))
+		for i, u := range users {
+			userIds[i] = u.Id
+		}
+		summaryMap := model.GetUsersRestrictedQuotaSummaryMap(userIds)
+		for _, u := range users {
+			if s, ok := summaryMap[u.Id]; ok {
+				u.RestrictedQuota = s.Quota
+				u.RestrictedChannels = s.Channels
+			}
+		}
 	}
 
 	pageInfo.SetTotal(int(total))

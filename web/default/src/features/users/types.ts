@@ -62,6 +62,8 @@ export const userSchema = z.object({
   admin_permissions: z
     .record(z.string(), z.record(z.string(), z.boolean()))
     .optional(),
+  restricted_quota: z.number().optional(),
+  restricted_channels: z.string().optional(), // JSON array of channel IDs
 })
 export type User = z.infer<typeof userSchema>
 
