@@ -162,23 +162,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	if priceData.FreeModel {
 		logger.LogInfo(c, fmt.Sprintf("模型 %s 免费，跳过预扣费", relayInfo.OriginModelName))
-	} else {
-		newAPIError = service.PreConsumeBilling(c, priceData.QuotaToPreConsume, relayInfo)
-		if newAPIError != nil {
-			return
-		}
 	}
-
-	defer func() {
-		// Only return quota if downstream failed and quota was actually pre-consumed
-		if newAPIError != nil {
-			newAPIError = service.NormalizeViolationFeeError(newAPIError)
-			if relayInfo.Billing != nil {
-				relayInfo.Billing.Refund(c)
-			}
-			service.ChargeViolationFeeIfNeeded(c, relayInfo, newAPIError)
-		}
-	}()
 
 	retryParam := &service.RetryParam{
 		Ctx:         c,
@@ -190,6 +174,17 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
+	defer func() {
+		// 处理提前退出（如 bodyErr）或循环内未退还的账单
+		if newAPIError != nil && relayInfo.Billing != nil {
+			relayInfo.Billing.Refund(c)
+		}
+		if newAPIError != nil {
+			newAPIError = service.NormalizeViolationFeeError(newAPIError)
+			service.ChargeViolationFeeIfNeeded(c, relayInfo, newAPIError)
+		}
+	}()
+
 	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
@@ -197,6 +192,15 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			logger.LogError(c, channelErr.Error())
 			newAPIError = channelErr
 			break
+		}
+
+		// 预扣费在渠道选择之后执行，确保赠送余额能按渠道匹配
+		if !priceData.FreeModel && relayInfo.Billing == nil {
+			relayInfo.ChannelId = channel.Id
+			newAPIError = service.PreConsumeBilling(c, priceData.QuotaToPreConsume, relayInfo)
+			if newAPIError != nil {
+				break
+			}
 		}
 
 		addUsedChannel(c, channel.Id)
@@ -232,6 +236,12 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		relayInfo.LastError = newAPIError
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
+
+		// 重试前退还当前渠道的预扣费，下一轮用新渠道重建
+		if relayInfo.Billing != nil {
+			relayInfo.Billing.Refund(c)
+			relayInfo.Billing = nil
+		}
 
 		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
 			break
