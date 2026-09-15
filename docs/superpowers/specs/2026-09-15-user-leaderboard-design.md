@@ -37,22 +37,23 @@
 新增 `RankingUserTotal` 结构与 `GetRankingUserTotals`：
 
 ```sql
-SELECT user_id, username, sum(token_used) AS total_tokens
+SELECT quota_data.user_id AS user_id,
+       COALESCE(NULLIF(users.username, ''), quota_data.username) AS username,
+       SUM(quota_data.token_used) AS total_tokens
 FROM quota_data
-WHERE username <> '' AND created_at >= ? AND created_at <= ?
-GROUP BY user_id, username
-HAVING sum(token_used) > 0
+LEFT JOIN users ON users.id = quota_data.user_id
+WHERE quota_data.username <> '' AND quota_data.created_at >= ? AND quota_data.created_at <= ?
+GROUP BY quota_data.user_id, COALESCE(NULLIF(users.username, ''), quota_data.username)
+HAVING SUM(quota_data.token_used) > 0
 ORDER BY total_tokens DESC
 LIMIT 20
 ```
 
 要点：
 
-- 复用现有 `applyRankingQuotaTimeRange` 处理时间边界。
-- GORM `Limit()` 三库（SQLite / MySQL / PostgreSQL）兼容。
-- 按 `user_id, username` 分组（与现有 `GetQuotaDataByUsername` 模式一致）；`user_id` 保证聚合唯一性，`username` 取记录值。
-- `WHERE username <> ''` 过滤空用户名的历史脏数据。
-- SQL 层直接 `LIMIT 20`，避免全量用户聚合进入内存。
+- **JOIN `users` 表取当前用户名**：用户改名不会同步回写 `quota_data.username`（历史快照），若按 `user_id, quota_data.username` 直接分组，改名用户的 token 会被拆成两条榜单记录。以 `users.username` 为准、`quota_data.username` 兜底（`COALESCE(NULLIF(...))`），已注销用户回退到快照名。三库均支持 `COALESCE`/`NULLIF`/`LEFT JOIN`。
+- `users` 与 `quota_data` 同在主库（`quota_data` 写入走 `DB` 而非 LOG_DB），JOIN 可行。
+- JOIN 引入列名歧义（两表均有 `created_at`/`username`），因此时间边界条件以限定列名 `quota_data.created_at` 内联（守卫逻辑与现有 `applyRankingQuotaTimeRange` 一致），不复用该未限定列名的 helper。
 
 ### `service/rankings.go` — 追加字段与组装
 
