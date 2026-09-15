@@ -12,18 +12,20 @@ import (
 )
 
 const (
-	rankingCacheTTL         = 5 * time.Minute
-	rankingLeaderboardLimit = 20
-	rankingHistoryLimit     = 10
-	rankingVendorLimit      = 5
-	rankingMoverLimit       = 6
-	rankingOthersLabel      = "Others"
-	rankingUnknownVendor    = "Unknown"
+	rankingCacheTTL             = 5 * time.Minute
+	rankingLeaderboardLimit     = 20
+	rankingUserLeaderboardLimit = 20
+	rankingHistoryLimit         = 10
+	rankingVendorLimit          = 5
+	rankingMoverLimit           = 6
+	rankingOthersLabel          = "Others"
+	rankingUnknownVendor        = "Unknown"
 )
 
 type RankingsResponse struct {
 	Models             []RankedModel      `json:"models"`
 	Vendors            []RankedVendor     `json:"vendors"`
+	Users              []RankedUser       `json:"users"`
 	TopMovers          []RankingMover     `json:"top_movers"`
 	TopDroppers        []RankingMover     `json:"top_droppers"`
 	ModelsHistory      ModelHistorySeries `json:"models_history"`
@@ -197,6 +199,10 @@ func buildRankingsSnapshot(config rankingPeriodConfig, now time.Time) (*Rankings
 	if err != nil {
 		return nil, err
 	}
+	userTotals, err := model.GetRankingUserTotals(startTime, endTime, rankingUserLeaderboardLimit)
+	if err != nil {
+		return nil, err
+	}
 
 	var previousTotals []model.RankingQuotaTotal
 	if config.hasPrevious {
@@ -221,6 +227,7 @@ func buildRankingsSnapshot(config rankingPeriodConfig, now time.Time) (*Rankings
 	return &RankingsResponse{
 		Models:             limitRankedModels(rankedModels, rankingLeaderboardLimit),
 		Vendors:            vendors,
+		Users:              buildRankedUsers(userTotals, totalTokens),
 		TopMovers:          movers,
 		TopDroppers:        droppers,
 		ModelsHistory:      modelHistory,
