@@ -78,6 +78,14 @@ export type RankingMover = {
   growth_pct: number
 }
 
+export type UserRanking = {
+  rank: number
+  user_id: number
+  username: string
+  total_tokens: number
+  share: number
+}
+
 /**
  * One sample of a model's token usage at a given timestamp.
  * Flat shape ready to feed VChart's stacked-bar spec.
@@ -127,6 +135,8 @@ export type RankingsSnapshot = {
   // Overall (all categories) ------------------------------------------------
   models: ModelRanking[]
   vendors: VendorRanking[]
+  /** Top users by token usage in the period. */
+  users: UserRanking[]
   /** Largest rank gainers in this period. */
   top_movers: RankingMover[]
   /** Largest rank losers in this period. */
