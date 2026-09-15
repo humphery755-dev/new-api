@@ -53,6 +53,14 @@ type RankedVendor struct {
 	TopModel    string  `json:"top_model"`
 }
 
+type RankedUser struct {
+	Rank        int     `json:"rank"`
+	UserID      int     `json:"user_id"`
+	Username    string  `json:"username"`
+	TotalTokens int64   `json:"total_tokens"`
+	Share       float64 `json:"share"`
+}
+
 type RankingMover struct {
 	ModelName   string  `json:"model_name"`
 	Vendor      string  `json:"vendor"`
@@ -284,6 +292,20 @@ func buildRankedModels(totals []model.RankingQuotaTotal, totalTokens int64, prev
 			TotalTokens:  item.TotalTokens,
 			Share:        rankingShare(item.TotalTokens, totalTokens),
 			GrowthPct:    growth,
+		})
+	}
+	return rows
+}
+
+func buildRankedUsers(totals []model.RankingUserTotal, totalTokens int64) []RankedUser {
+	rows := make([]RankedUser, 0, len(totals))
+	for idx, item := range totals {
+		rows = append(rows, RankedUser{
+			Rank:        idx + 1,
+			UserID:      item.UserID,
+			Username:    item.Username,
+			TotalTokens: item.TotalTokens,
+			Share:       rankingShare(item.TotalTokens, totalTokens),
 		})
 	}
 	return rows
