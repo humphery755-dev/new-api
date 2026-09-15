@@ -49,6 +49,7 @@ func TestBuildRankedUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rows := buildRankedUsers(tt.totals, tt.totalTokens)
+			require.NotNil(t, rows)
 			require.Len(t, rows, len(tt.expected))
 			for i, want := range tt.expected {
 				assert.Equal(t, want, rows[i])

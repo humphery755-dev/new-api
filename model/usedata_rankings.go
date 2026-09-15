@@ -68,7 +68,7 @@ func GetRankingUserTotals(startTime int64, endTime int64, limit int) ([]RankingU
 		Where("quota_data.username <> ''").
 		Group("quota_data.user_id, " + usernameExpr).
 		Having("sum(quota_data.token_used) > 0").
-		Order("total_tokens DESC").
+		Order("total_tokens DESC, quota_data.user_id ASC").
 		Limit(limit)
 	if startTime > 0 {
 		query = query.Where("quota_data.created_at >= ?", startTime)
