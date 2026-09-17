@@ -120,10 +120,6 @@ func GetRandomSatisfiedChannel(
 	retry int,
 	filters []dto.ChannelFilter,
 ) (*Channel, error) {
-	// if memory cache is disabled, get channel directly from database
-	if !common.MemoryCacheEnabled {
-		return GetChannel(group, model, retry, filters)
-	}
 	return GetRandomSatisfiedChannelWithClient(group, model, retry, filters, "")
 }
 
@@ -134,6 +130,11 @@ func GetRandomSatisfiedChannelWithClient(
 	filters []dto.ChannelFilter,
 	pollingClientKey string,
 ) (*Channel, error) {
+	// if memory cache is disabled, get channel directly from database.
+	// DB 直查路径不参与轮询,轮询依赖内存缓存。
+	if !common.MemoryCacheEnabled {
+		return GetChannel(group, model, retry, filters)
+	}
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
