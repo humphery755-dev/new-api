@@ -124,7 +124,16 @@ func GetRandomSatisfiedChannel(
 	if !common.MemoryCacheEnabled {
 		return GetChannel(group, model, retry, filters)
 	}
+	return GetRandomSatisfiedChannelWithClient(group, model, retry, filters, "")
+}
 
+func GetRandomSatisfiedChannelWithClient(
+	group string,
+	model string,
+	retry int,
+	filters []dto.ChannelFilter,
+	pollingClientKey string,
+) (*Channel, error) {
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
@@ -183,6 +192,11 @@ func GetRandomSatisfiedChannel(
 
 	if len(targetChannels) == 0 {
 		return nil, errors.New(fmt.Sprintf("no channel found, group: %s, model: %s, priority: %d", group, model, targetPriority))
+	}
+
+	// 加权轮询分支:启用且带 clientKey 时在同优先级候选内轮流选择
+	if channel := selectChannelByPolling(pollingClientKey, model, targetChannels); channel != nil {
+		return channel, nil
 	}
 
 	// smoothing factor and adjustment

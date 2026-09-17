@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -9,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,6 +37,18 @@ func AppendTaskPluginIdentityFilter(c *gin.Context, pluginKey string) {
 		TaskPluginChannelTypes: channelTypes,
 		TaskPluginKeys:         pluginKeys,
 	})
+}
+
+// GetPollingClientKey 返回渠道轮询的客户端 key;"user" 维度用 user id,"token" 维度用 token id。
+// c 为 nil 时返回空串(调用方不启用轮询)。
+func GetPollingClientKey(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	if setting.ChannelPollingScope == setting.ChannelPollingScopeToken {
+		return "t:" + strconv.Itoa(common.GetContextKeyInt(c, constant.ContextKeyTokenId))
+	}
+	return "u:" + strconv.Itoa(c.GetInt("id"))
 }
 
 type RetryParam struct {
@@ -113,6 +127,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	selectGroup := param.TokenGroup
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
 	filters := GetChannelConstraints(param.Ctx).Filters
+	pollingClientKey := GetPollingClientKey(param.Ctx)
 
 	if param.TokenGroup == "auto" {
 		autoGroups := GetRequestAutoGroups(param.Ctx, userGroup)
@@ -143,11 +158,12 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannel(
+			channel, _ = model.GetRandomSatisfiedChannelWithClient(
 				autoGroup,
 				param.ModelName,
 				priorityRetry,
 				filters,
+				pollingClientKey,
 			)
 			if channel == nil {
 				// Current group has no available channel for this model, try next group
@@ -186,11 +202,12 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			break
 		}
 	} else {
-		channel, err = model.GetRandomSatisfiedChannel(
+		channel, err = model.GetRandomSatisfiedChannelWithClient(
 			param.TokenGroup,
 			param.ModelName,
 			param.GetRetry(),
 			filters,
+			pollingClientKey,
 		)
 		if err != nil {
 			return nil, param.TokenGroup, err
