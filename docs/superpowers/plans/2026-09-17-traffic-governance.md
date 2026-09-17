@@ -288,6 +288,8 @@ func TestConcurrencyQueueDisabledPassesThrough(t *testing.T) {
 func TestConcurrencyQueueThirdRequestQueuesUntilRelease(t *testing.T) {
 	setupConcurrencyQueueFixture(t, true, "user", 2, 30, nil)
 
+	// 中间件必须与业务 handler 组成链执行(SetHandlers+Next),
+	// 单独调用 mw(c) 会在 mw 内部跑完空链并立即释放槽位,无法测排队。
 	block := make(chan struct{})
 	handler := func(c *gin.Context) {
 		<-block
@@ -300,8 +302,7 @@ func TestConcurrencyQueueThirdRequestQueuesUntilRelease(t *testing.T) {
 
 	done1 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c1)
-		handler(c1)
+		c1.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c1.Next()
 		close(done1)
 	}()
@@ -309,8 +310,7 @@ func TestConcurrencyQueueThirdRequestQueuesUntilRelease(t *testing.T) {
 
 	done2 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c2)
-		handler(c2)
+		c2.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c2.Next()
 		close(done2)
 	}()
@@ -318,8 +318,7 @@ func TestConcurrencyQueueThirdRequestQueuesUntilRelease(t *testing.T) {
 
 	done3 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c3)
-		handler(c3)
+		c3.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c3.Next()
 		close(done3)
 	}()
@@ -340,10 +339,16 @@ func TestConcurrencyQueueThirdRequestQueuesUntilRelease(t *testing.T) {
 func TestConcurrencyQueueTimeoutReturns429(t *testing.T) {
 	setupConcurrencyQueueFixture(t, true, "user", 1, 1, nil)
 
+	hold := make(chan struct{})
+	handler := func(c *gin.Context) {
+		<-hold
+		c.Status(http.StatusOK)
+	}
+
 	c1, _ := newConcurrencyQueueTestContext(t, 1, 0, "default")
 	done1 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c1)
+		c1.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c1.Next()
 		close(done1)
 	}()
@@ -355,6 +360,7 @@ func TestConcurrencyQueueTimeoutReturns429(t *testing.T) {
 
 	assert.Equal(t, http.StatusTooManyRequests, w2.Code)
 	assert.Equal(t, "1", w2.Header().Get("Retry-After"))
+	close(hold)
 	select {
 	case <-done1:
 	case <-time.After(2 * time.Second):
@@ -385,10 +391,16 @@ func TestConcurrencyQueueZeroCapacityPassesThrough(t *testing.T) {
 func TestConcurrencyQueueGroupLimitOverridesDefault(t *testing.T) {
 	setupConcurrencyQueueFixture(t, true, "user", 3, 1, map[string]int{"vip": 1})
 
+	hold := make(chan struct{})
+	handler := func(c *gin.Context) {
+		<-hold
+		c.Status(http.StatusOK)
+	}
+
 	c1, _ := newConcurrencyQueueTestContext(t, 1, 0, "vip")
 	done1 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c1)
+		c1.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c1.Next()
 		close(done1)
 	}()
@@ -398,16 +410,24 @@ func TestConcurrencyQueueGroupLimitOverridesDefault(t *testing.T) {
 	ConcurrencyQueue()(c2)
 	c2.Next()
 	assert.Equal(t, http.StatusTooManyRequests, w2.Code)
+	close(hold)
+	<-done1
 }
 
 func TestConcurrencyQueueTokenScopeIsolatesKeys(t *testing.T) {
 	setupConcurrencyQueueFixture(t, true, "token", 1, 30, nil)
 
+	hold := make(chan struct{})
+	handler := func(c *gin.Context) {
+		<-hold
+		c.Status(http.StatusOK)
+	}
+
 	c1, _ := newConcurrencyQueueTestContext(t, 1, 100, "default")
 	c2, w2 := newConcurrencyQueueTestContext(t, 1, 200, "default")
 	done1 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c1)
+		c1.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c1.Next()
 		close(done1)
 	}()
@@ -422,15 +442,23 @@ func TestConcurrencyQueueTokenScopeIsolatesKeys(t *testing.T) {
 		_, ok := concurrencyQueues["t:100"]
 		return !ok
 	})
+	close(hold)
+	<-done1
 }
 
 func TestConcurrencyQueueClientDisconnectWhileQueued(t *testing.T) {
 	setupConcurrencyQueueFixture(t, true, "user", 1, 30, nil)
 
+	hold := make(chan struct{})
+	handler := func(c *gin.Context) {
+		<-hold
+		c.Status(http.StatusOK)
+	}
+
 	c1, _ := newConcurrencyQueueTestContext(t, 1, 0, "default")
 	done1 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c1)
+		c1.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c1.Next()
 		close(done1)
 	}()
@@ -442,7 +470,7 @@ func TestConcurrencyQueueClientDisconnectWhileQueued(t *testing.T) {
 	c2.Request = c2.Request.WithContext(ctx)
 	done2 := make(chan struct{})
 	go func() {
-		ConcurrencyQueue()(c2)
+		c2.SetHandlers(gin.HandlersChain{ConcurrencyQueue(), handler})
 		c2.Next()
 		close(done2)
 	}()
@@ -455,15 +483,11 @@ func TestConcurrencyQueueClientDisconnectWhileQueued(t *testing.T) {
 		t.Fatal("disconnected request never returned from queue")
 	}
 	assert.Equal(t, http.StatusOK, w2.Code, "no 429 body written after client disconnect")
-	assert.True(t, done2ClosedWithoutAbort(w2))
+	assert.Equal(t, 0, w2.Body.Len(), "disconnect path is silent: empty body")
 
-	close(done1)
+	close(hold)
+	<-done1
 	waitForCondition(t, func() bool { return len(concurrencyQueues) == 0 })
-}
-
-func done2ClosedWithoutAbort(w *httptest.ResponseRecorder) bool {
-	// 客户端断开路径静默返回:未调用 abortWithOpenAiMessage,响应体为空
-	return w.Body.Len() == 0
 }
 
 // --- helpers ---
