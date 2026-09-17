@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ConcurrencyQueueSection } from '../request-limits/concurrency-queue-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
 import { SensitiveWordsSection } from '../request-limits/sensitive-words-section'
 import { SSRFSection } from '../request-limits/ssrf-section'
@@ -37,6 +38,23 @@ const SECURITY_SECTIONS = [
           ModelRequestRateLimitDurationMinutes:
             settings.ModelRequestRateLimitDurationMinutes,
           ModelRequestRateLimitGroup: settings.ModelRequestRateLimitGroup,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'concurrency-queue',
+    titleKey: 'Concurrency Queue',
+    build: (settings: SecuritySettings) => (
+      <ConcurrencyQueueSection
+        defaultValues={{
+          ConcurrencyQueueEnabled: settings.ConcurrencyQueueEnabled,
+          ConcurrencyQueueScope:
+            settings.ConcurrencyQueueScope === 'token' ? 'token' : 'user',
+          ConcurrencyQueueDefaultLimit: settings.ConcurrencyQueueDefaultLimit,
+          ConcurrencyQueueTimeoutSeconds:
+            settings.ConcurrencyQueueTimeoutSeconds,
+          ConcurrencyQueueGroupLimit: settings.ConcurrencyQueueGroupLimit,
         }}
       />
     ),
