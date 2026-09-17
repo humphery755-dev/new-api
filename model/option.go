@@ -154,6 +154,8 @@ func InitOptionMap() {
 	common.OptionMap["ConcurrencyQueueDefaultLimit"] = strconv.Itoa(setting.ConcurrencyQueueDefaultLimit)
 	common.OptionMap["ConcurrencyQueueTimeoutSeconds"] = strconv.Itoa(setting.ConcurrencyQueueTimeoutSeconds)
 	common.OptionMap["ConcurrencyQueueGroupLimit"] = setting.ConcurrencyQueueGroupLimit2JSONString()
+	common.OptionMap["ChannelPollingEnabled"] = strconv.FormatBool(setting.ChannelPollingEnabled)
+	common.OptionMap["ChannelPollingScope"] = setting.ChannelPollingScope
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -414,6 +416,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.ModelRequestRateLimitEnabled = boolValue
 		case "ConcurrencyQueueEnabled":
 			setting.ConcurrencyQueueEnabled = boolValue
+		case "ChannelPollingEnabled":
+			setting.ChannelPollingEnabled = boolValue
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
@@ -599,6 +603,8 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ConcurrencyQueueTimeoutSeconds, _ = strconv.Atoi(value)
 	case "ConcurrencyQueueGroupLimit":
 		err = setting.UpdateConcurrencyQueueGroupLimitByJSONString(value)
+	case "ChannelPollingScope":
+		setting.ChannelPollingScope = value
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)
 	case "DataExportInterval":
