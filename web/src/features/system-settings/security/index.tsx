@@ -35,6 +35,8 @@ const defaultSecuritySettings: SecuritySettings = {
   ConcurrencyQueueDefaultLimit: 2,
   ConcurrencyQueueTimeoutSeconds: 30,
   ConcurrencyQueueGroupLimit: '',
+  ChannelPollingEnabled: false,
+  ChannelPollingScope: 'user',
   CheckSensitiveEnabled: false,
   CheckSensitiveOnPromptEnabled: false,
   SensitiveWords: '',

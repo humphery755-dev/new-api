@@ -411,6 +411,8 @@ export type SecuritySettings = {
   ConcurrencyQueueDefaultLimit: number
   ConcurrencyQueueTimeoutSeconds: number
   ConcurrencyQueueGroupLimit: string
+  ChannelPollingEnabled: boolean
+  ChannelPollingScope: string
   CheckSensitiveEnabled: boolean
   CheckSensitiveOnPromptEnabled: boolean
   SensitiveWords: string

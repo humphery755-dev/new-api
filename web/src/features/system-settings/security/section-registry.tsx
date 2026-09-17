@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ChannelPollingSection } from '../request-limits/channel-polling-section'
 import { ConcurrencyQueueSection } from '../request-limits/concurrency-queue-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
 import { SensitiveWordsSection } from '../request-limits/sensitive-words-section'
@@ -55,6 +56,19 @@ const SECURITY_SECTIONS = [
           ConcurrencyQueueTimeoutSeconds:
             settings.ConcurrencyQueueTimeoutSeconds,
           ConcurrencyQueueGroupLimit: settings.ConcurrencyQueueGroupLimit,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'channel-polling',
+    titleKey: 'Channel Polling',
+    build: (settings: SecuritySettings) => (
+      <ChannelPollingSection
+        defaultValues={{
+          ChannelPollingEnabled: settings.ChannelPollingEnabled,
+          ChannelPollingScope:
+            settings.ChannelPollingScope === 'token' ? 'token' : 'user',
         }}
       />
     ),
