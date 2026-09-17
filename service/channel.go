@@ -55,10 +55,14 @@ func EnableChannel(channelId int, usingKey string, channelName string) {
 }
 
 func ShouldDisableChannel(err *types.NewAPIError) bool {
-	if !common.AutomaticDisableChannelEnabled {
+	if err == nil {
 		return false
 	}
-	if err == nil {
+	// 错误关键字规则引擎:命中即短路,未命中回落现有逻辑
+	if action, ok := MatchChannelErrorAction(err); ok {
+		return action == operation_setting.ChannelErrorActionDisable
+	}
+	if !common.AutomaticDisableChannelEnabled {
 		return false
 	}
 	if types.IsChannelError(err) {

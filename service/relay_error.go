@@ -20,6 +20,16 @@ func ShouldRetryRelayError(c *gin.Context, openaiErr *types.NewAPIError, retryTi
 	if openaiErr == nil {
 		return false
 	}
+	// 错误关键字规则引擎:命中即短路,未命中回落现有逻辑
+	if action, ok := MatchChannelErrorAction(openaiErr); ok {
+		switch action {
+		case operation_setting.ChannelErrorActionRetryNext:
+			return true
+		case operation_setting.ChannelErrorActionPassthrough:
+			return false
+		}
+		// disable:落到现有重试判定(渠道错误/状态码规则通常已允许换渠道)
+	}
 	if ShouldSkipRetryAfterChannelAffinityFailure(c) {
 		return false
 	}
