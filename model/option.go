@@ -156,6 +156,7 @@ func InitOptionMap() {
 	common.OptionMap["ConcurrencyQueueGroupLimit"] = setting.ConcurrencyQueueGroupLimit2JSONString()
 	common.OptionMap["ChannelPollingEnabled"] = strconv.FormatBool(setting.ChannelPollingEnabled)
 	common.OptionMap["ChannelPollingScope"] = setting.ChannelPollingScope
+	common.OptionMap["ChannelErrorKeywordActions"] = operation_setting.ChannelErrorKeywordActions2JSONString()
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -605,6 +606,8 @@ func updateOptionMap(key string, value string) (err error) {
 		err = setting.UpdateConcurrencyQueueGroupLimitByJSONString(value)
 	case "ChannelPollingScope":
 		setting.ChannelPollingScope = value
+	case "ChannelErrorKeywordActions":
+		err = operation_setting.UpdateChannelErrorKeywordActionsByJSONString(value)
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)
 	case "DataExportInterval":
