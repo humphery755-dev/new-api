@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { ChannelErrorRulesSection } from '../request-limits/channel-error-rules-section'
 import { ChannelPollingSection } from '../request-limits/channel-polling-section'
 import { ConcurrencyQueueSection } from '../request-limits/concurrency-queue-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
@@ -69,6 +70,17 @@ const SECURITY_SECTIONS = [
           ChannelPollingEnabled: settings.ChannelPollingEnabled,
           ChannelPollingScope:
             settings.ChannelPollingScope === 'token' ? 'token' : 'user',
+        }}
+      />
+    ),
+  },
+  {
+    id: 'channel-error-rules',
+    titleKey: 'Channel Error Rules',
+    build: (settings: SecuritySettings) => (
+      <ChannelErrorRulesSection
+        defaultValues={{
+          ChannelErrorKeywordActions: settings.ChannelErrorKeywordActions,
         }}
       />
     ),

@@ -37,6 +37,8 @@ const defaultSecuritySettings: SecuritySettings = {
   ConcurrencyQueueGroupLimit: '',
   ChannelPollingEnabled: false,
   ChannelPollingScope: 'user',
+  ChannelErrorKeywordActions:
+    '[{"keywords":["余额不足","无可用资源包","insufficient quota"],"action":"disable"},{"keywords":["限流","rate limit","too many requests"],"action":"retry_next"},{"keywords":["内容安全","sensitive content"],"action":"passthrough"}]',
   CheckSensitiveEnabled: false,
   CheckSensitiveOnPromptEnabled: false,
   SensitiveWords: '',
