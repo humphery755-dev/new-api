@@ -16,6 +16,7 @@ func SetVideoRouter(router *gin.Engine) {
 		"/video/generations",
 		middleware.PinTaskPluginEndpoint(),
 		middleware.TaskPluginEndpointOnly(middleware.ModelRequestRateLimit()),
+		middleware.ConcurrencyQueue(),
 		middleware.PrepareTaskPluginEndpoint(),
 		middleware.Distribute(),
 		func(c *gin.Context) {
