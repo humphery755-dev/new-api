@@ -20,7 +20,6 @@ import { ChannelErrorRulesSection } from '../request-limits/channel-error-rules-
 import { ChannelPollingSection } from '../request-limits/channel-polling-section'
 import { ConcurrencyQueueSection } from '../request-limits/concurrency-queue-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
-import { SensitiveWordsSection } from '../request-limits/sensitive-words-section'
 import { SSRFSection } from '../request-limits/ssrf-section'
 import { TokenLimitSection } from '../request-limits/token-limit-section'
 import type { SecuritySettings } from '../types'
@@ -81,19 +80,6 @@ const SECURITY_SECTIONS = [
       <ChannelErrorRulesSection
         defaultValues={{
           ChannelErrorKeywordActions: settings.ChannelErrorKeywordActions,
-        }}
-      />
-    ),
-  },
-  {
-    id: 'sensitive-words',
-    titleKey: 'Sensitive Words',
-    build: (settings: SecuritySettings) => (
-      <SensitiveWordsSection
-        defaultValues={{
-          CheckSensitiveEnabled: settings.CheckSensitiveEnabled,
-          CheckSensitiveOnPromptEnabled: settings.CheckSensitiveOnPromptEnabled,
-          SensitiveWords: settings.SensitiveWords,
         }}
       />
     ),
