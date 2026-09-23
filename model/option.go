@@ -150,6 +150,7 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
 	common.OptionMap["ConcurrencyQueueEnabled"] = strconv.FormatBool(setting.ConcurrencyQueueEnabled)
+	common.OptionMap["DisableTokenGroupOverride"] = strconv.FormatBool(setting.DisableTokenGroupOverride)
 	common.OptionMap["ConcurrencyQueueScope"] = setting.ConcurrencyQueueScope
 	common.OptionMap["ConcurrencyQueueDefaultLimit"] = strconv.Itoa(setting.ConcurrencyQueueDefaultLimit)
 	common.OptionMap["ConcurrencyQueueTimeoutSeconds"] = strconv.Itoa(setting.ConcurrencyQueueTimeoutSeconds)
@@ -453,6 +454,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.ModelRequestRateLimitEnabled = boolValue
 		case "ConcurrencyQueueEnabled":
 			setting.ConcurrencyQueueEnabled = boolValue
+		case "DisableTokenGroupOverride":
+			setting.DisableTokenGroupOverride = boolValue
 		case "ChannelPollingEnabled":
 			setting.ChannelPollingEnabled = boolValue
 		case "StopOnSensitiveEnabled":
