@@ -31,6 +31,7 @@ import (
 	"github.com/QuantumNous/new-api/router"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
+	"github.com/QuantumNous/new-api/setting"
 	_ "github.com/QuantumNous/new-api/setting/performance_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
@@ -302,6 +303,12 @@ func InitResources() error {
 	common.InitEnv()
 
 	logger.SetupLogger()
+
+	// Load the unified custom feature config (see changes-todo.md). A missing
+	// file keeps built-in defaults; an invalid file aborts startup.
+	if err := setting.LoadCustomConfig(setting.DefaultCustomConfigPath()); err != nil {
+		return err
+	}
 
 	// Initialize model settings
 	ratio_setting.InitRatioSettings()

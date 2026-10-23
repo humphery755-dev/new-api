@@ -402,14 +402,6 @@ export type SecuritySettings = {
   ModelRequestRateLimitSuccessCount: number
   ModelRequestRateLimitDurationMinutes: number
   ModelRequestRateLimitGroup: string
-  ConcurrencyQueueEnabled: boolean
-  ConcurrencyQueueScope: string
-  ConcurrencyQueueDefaultLimit: number
-  ConcurrencyQueueTimeoutSeconds: number
-  ConcurrencyQueueGroupLimit: string
-  ChannelPollingEnabled: boolean
-  ChannelPollingScope: string
-  ChannelErrorKeywordActions: string
   CheckSensitiveEnabled: boolean
   CheckSensitiveOnPromptEnabled: boolean
   SensitiveWords: string

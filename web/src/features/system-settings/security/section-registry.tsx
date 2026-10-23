@@ -16,9 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChannelErrorRulesSection } from '../request-limits/channel-error-rules-section'
-import { ChannelPollingSection } from '../request-limits/channel-polling-section'
-import { ConcurrencyQueueSection } from '../request-limits/concurrency-queue-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
 import { SSRFSection } from '../request-limits/ssrf-section'
 import { TokenLimitSection } from '../request-limits/token-limit-section'
@@ -43,47 +40,7 @@ const SECURITY_SECTIONS = [
       />
     ),
   },
-  {
-    id: 'concurrency-queue',
-    titleKey: 'Concurrency Queue',
-    build: (settings: SecuritySettings) => (
-      <ConcurrencyQueueSection
-        defaultValues={{
-          ConcurrencyQueueEnabled: settings.ConcurrencyQueueEnabled,
-          ConcurrencyQueueScope:
-            settings.ConcurrencyQueueScope === 'token' ? 'token' : 'user',
-          ConcurrencyQueueDefaultLimit: settings.ConcurrencyQueueDefaultLimit,
-          ConcurrencyQueueTimeoutSeconds:
-            settings.ConcurrencyQueueTimeoutSeconds,
-          ConcurrencyQueueGroupLimit: settings.ConcurrencyQueueGroupLimit,
-        }}
-      />
-    ),
-  },
-  {
-    id: 'channel-polling',
-    titleKey: 'Channel Polling',
-    build: (settings: SecuritySettings) => (
-      <ChannelPollingSection
-        defaultValues={{
-          ChannelPollingEnabled: settings.ChannelPollingEnabled,
-          ChannelPollingScope:
-            settings.ChannelPollingScope === 'token' ? 'token' : 'user',
-        }}
-      />
-    ),
-  },
-  {
-    id: 'channel-error-rules',
-    titleKey: 'Channel Error Rules',
-    build: (settings: SecuritySettings) => (
-      <ChannelErrorRulesSection
-        defaultValues={{
-          ChannelErrorKeywordActions: settings.ChannelErrorKeywordActions,
-        }}
-      />
-    ),
-  },
+
   {
     id: 'ssrf',
     titleKey: 'SSRF Protection',

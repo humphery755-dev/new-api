@@ -153,15 +153,6 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
-	common.OptionMap["ConcurrencyQueueEnabled"] = strconv.FormatBool(setting.ConcurrencyQueueEnabled)
-	common.OptionMap["DisableTokenGroupOverride"] = strconv.FormatBool(setting.DisableTokenGroupOverride)
-	common.OptionMap["ConcurrencyQueueScope"] = setting.ConcurrencyQueueScope
-	common.OptionMap["ConcurrencyQueueDefaultLimit"] = strconv.Itoa(setting.ConcurrencyQueueDefaultLimit)
-	common.OptionMap["ConcurrencyQueueTimeoutSeconds"] = strconv.Itoa(setting.ConcurrencyQueueTimeoutSeconds)
-	common.OptionMap["ConcurrencyQueueGroupLimit"] = setting.ConcurrencyQueueGroupLimit2JSONString()
-	common.OptionMap["ChannelPollingEnabled"] = strconv.FormatBool(setting.ChannelPollingEnabled)
-	common.OptionMap["ChannelPollingScope"] = setting.ChannelPollingScope
-	common.OptionMap["ChannelErrorKeywordActions"] = operation_setting.ChannelErrorKeywordActions2JSONString()
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -485,12 +476,6 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.CheckSensitiveOnPromptEnabled = boolValue
 		case "ModelRequestRateLimitEnabled":
 			setting.ModelRequestRateLimitEnabled = boolValue
-		case "ConcurrencyQueueEnabled":
-			setting.ConcurrencyQueueEnabled = boolValue
-		case "DisableTokenGroupOverride":
-			setting.DisableTokenGroupOverride = boolValue
-		case "ChannelPollingEnabled":
-			setting.ChannelPollingEnabled = boolValue
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
@@ -668,18 +653,6 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ModelRequestRateLimitSuccessCount, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitGroup":
 		err = setting.UpdateModelRequestRateLimitGroupByJSONString(value)
-	case "ConcurrencyQueueScope":
-		setting.ConcurrencyQueueScope = value
-	case "ConcurrencyQueueDefaultLimit":
-		setting.ConcurrencyQueueDefaultLimit, _ = strconv.Atoi(value)
-	case "ConcurrencyQueueTimeoutSeconds":
-		setting.ConcurrencyQueueTimeoutSeconds, _ = strconv.Atoi(value)
-	case "ConcurrencyQueueGroupLimit":
-		err = setting.UpdateConcurrencyQueueGroupLimitByJSONString(value)
-	case "ChannelPollingScope":
-		setting.ChannelPollingScope = value
-	case "ChannelErrorKeywordActions":
-		err = operation_setting.UpdateChannelErrorKeywordActionsByJSONString(value)
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)
 	case "DataExportInterval":

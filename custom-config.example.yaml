@@ -1,0 +1,44 @@
+# custom-config.yaml 示例 — v1alpha0.1 全部定制功能的统一配置文件
+#
+# 用法: 复制为 custom-config.yaml（与二进制同目录），
+#       或用环境变量 CUSTOM_CONFIG_PATH 指定其他路径。
+# 语义: 文件不存在 -> 各功能用内置默认值（除错误规则引擎用默认规则外全部关闭）;
+#       文件存在但解析/校验失败 -> 启动直接退出（不静默降级）。
+#       修改配置需重启进程生效。
+# 详见 changes-todo.md。
+
+# --- 并发队列: 同一客户端并发超限时排队等待而非立即拒绝 ---
+concurrency_queue:
+  enabled: false
+  scope: user            # user | token, 缺省 user
+  default_limit: 2       # 每客户端并发上限; 显式 0 = 不限; 缺省保持内置默认 2
+  timeout_seconds: 30    # 排队等待超时; 缺省保持内置默认 30
+  group_limits:          # 按分组覆盖 default_limit; 值 0 = 该分组不限
+    default: 2
+    vip: 5
+
+# --- SWRR 加权轮询: 同一客户端对同一模型在同优先级候选渠道内按权重轮流分发 ---
+channel_polling:
+  enabled: false
+  scope: user            # user | token, 缺省 user
+
+# --- 渠道错误关键词规则: 按序匹配, 首条命中生效; 未配置 rules 时用内置默认规则
+#     (余额类->disable, 限流类->retry_next, 内容安全类->passthrough) ---
+channel_error_rules:
+  rules:
+    - keywords: ["余额不足", "无可用资源包", "insufficient quota"]
+      action: disable        # disable | retry_next | passthrough
+    - keywords: ["限流", "rate limit", "too many requests"]
+      action: retry_next
+    - keywords: ["内容安全", "sensitive content"]
+      action: passthrough
+
+# --- 令牌分组不覆盖账户分组: true 时渠道分发强制按账户分组 ---
+token_group_override:
+  disable: false
+
+# --- Claude missing-thinking patch: 思考链断裂时为最后一条 assistant 消息
+#     插入占位 thinking 块。仅 GLM 风格 Anthropic 兼容上游可列入;
+#     官方 Anthropic 渠道禁止列入（占位块无 signature 会被拒）。 ---
+claude_missing_thinking_patch:
+  channel_ids: []        # 如 [30]
