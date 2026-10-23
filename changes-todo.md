@@ -2,7 +2,7 @@
 
 > **用途**：本分支（v1alpha0.1）在 upstream（QuantumNous/new-api）main 之上的定制功能登记簿。
 > **AI 必读**：每次合并 upstream 或修改任何定制功能之前，先通读本文档，确认定制点分布，避免误删/漏合。
-> 最后更新：2026-10-23（配置外置化重构已完成：5 项定制配置全部统一到 custom-config.yaml）
+> 最后更新：2026-10-23（配置外置化重构已完成：5 项定制配置全部统一到 custom-config.yaml；**定制代码文件化重构已完成**：定制函数/测试全部外移到新文件，upstream 已有文件仅保留接线点）
 
 ---
 
@@ -37,7 +37,7 @@ git stash pop
 |---|---|
 | `.github/workflows/*` | **一律取 ours（HEAD）**。fork 凭据缺 workflow scope，workflows 内容相对 origin 有变更的推送会被拒。合并后 `git diff origin/v1alpha0.1 HEAD -- .github/` 必须为空 |
 | `router/task-plugin-protocol-router.go` | 我们插入了 `ConcurrencyQueue()`；upstream 曾把 `PinTaskPluginEndpoint` 改为 `RouteTaskPluginEndpoint`（880211326）。合并时两者都要保留：upstream 新中间件名 + 我们的 ConcurrencyQueue |
-| `relay/channel/claude/adaptor.go` | missing-thinking patch 所在文件，upstream 也常改（billing）。我们的改动集中在 `ConvertClaudeRequest` 调用 patch 判断 + 文件尾部 patch 函数 + `setting.PatchMissingThinkingChannels` |
+| `relay/channel/claude/adaptor.go` | missing-thinking patch 的**接线点**（import + `ConvertClaudeRequest` 内 4 行调用判断）所在文件；patch 实现已外移到 `adaptor_missing_thinking.go`。upstream 也常改此文件（billing），冲突时保留接线点与 `setting.PatchMissingThinkingChannels` |
 | `service/channel.go` `ShouldDisableChannel` | 错误规则引擎在此短路 upstream 逻辑 |
 | `web/src/i18n/locales/*.json` | 自动合并后必须验证 JSON 有效性；upstream 有 `chore(web): sort locale keys` 类提交 |
 
@@ -54,9 +54,10 @@ git stash pop
 
 - **状态**：✅ 完成
 - **行为**：rankings 页新增用户用量排行榜区块，users 表 JOIN 取当前用户名，排序稳定化 + 非空契约锁定。
-- **文件**：
-  - 后端：`service/rankings.go`（+43）、`service/rankings_test.go`（+59）、`model/usedata_rankings.go`（+32）
-  - 前端：`web/src/features/rankings/`（users-section.tsx +98、index.tsx、types.ts、components/index.ts）
+- **文件**（定制实现已全部外移到新文件，upstream 已有文件仅留接线）：
+  - 后端接线：`service/rankings.go`（+6：`Users` 字段 + 数据获取 + 响应组装）
+  - 后端新文件：`service/rankings_users.go`（RankedUser/buildRankedUsers/常量）、`service/rankings_test.go`（+59）、`model/usedata_rankings_users.go`（RankingUserTotal/GetRankingUserTotals；原 `model/usedata_rankings.go` 已还原 upstream）
+  - 前端：`web/src/features/rankings/`（users-section.tsx 新文件 +98；index.tsx/types.ts/components/index.ts 各 1-10 行接线）
   - i18n：7 locale 各有排行榜 keys（**清理 locale 时保留这部分**）
 - **合并注意**：与 upstream 的 rankings 改动冲突时保留功能侧。
 
@@ -64,9 +65,11 @@ git stash pop
 
 - **状态**：✅ 完成（配置并入 custom-config.yaml，见下）
 - **行为**：GLM 风格 Anthropic 兼容上游对"思考链断裂"的历史回复 400；列入 `claude_missing_thinking_patch.channel_ids` 的渠道，在最后一条 assistant 消息缺 thinking 块时插入占位块。**官方 Anthropic 渠道禁止列入**（占位块无 signature 会被拒）。临时 workaround，上游不再校验思考链透传后移除。
-- **文件**：`relay/channel/claude/adaptor.go`（`patchMissingThinkingBlock` / `contentHasThinkingBlock` + `ConvertClaudeRequest` 内的判断）、`relay/channel/claude/adaptor_test.go`
+- **文件**：
+  - 接线：`relay/channel/claude/adaptor.go`（+8：import + `ConvertClaudeRequest` 内调用判断）
+  - 新文件：`relay/channel/claude/adaptor_missing_thinking.go`（`patchMissingThinkingBlock` / `contentHasThinkingBlock`）、`relay/channel/claude/adaptor_missing_thinking_test.go`（测试；原 `adaptor_test.go` 已还原 upstream）
 - **配置**：`custom-config.yaml` → `claude_missing_thinking_patch.channel_ids`（默认空 = 不 patch）
-- **合并注意**：upstream 常改 adaptor.go（billing），冲突时保留 patch 函数与判断调用。
+- **合并注意**：upstream 常改 adaptor.go（billing），冲突时保留接线点与 patch 函数。
 
 ### 3. 并发队列（per-client concurrency queue）
 
@@ -84,10 +87,11 @@ git stash pop
 - **行为**：开启后同一客户端对同一模型在同优先级候选渠道内按权重平滑轮询（SWRR），关闭时保持 upstream 加权随机。内存缓存关闭（DB 直查）路径不参与轮询。
 - **文件**：
   - `model/channel_cache_swrr.go`（82 行）+ 测试（91 行）
-  - `model/channel_cache.go`：`GetRandomSatisfiedChannelWithClient`（+19）
-  - `service/channel_select.go`：`GetPollingClientKey` + 调用切换（+21）、`service/channel_select_polling_test.go`（47 行）
+  - `model/channel_cache.go`：`GetRandomSatisfiedChannel` 增加可选 variadic 参数 `pollingClientKey ...string` + 轮询分支（+10/-2；**不再有 WithClient wrapper**，upstream 函数体保持原位）
+  - `service/channel_select.go`：`pollingClientKey` 获取与传入（+3）
+  - `service/channel_select_polling.go`（新）：`GetPollingClientKey` 外移至此（与 channel_select_polling_test.go 配对）
 - **配置**：`custom-config.yaml` → `channel_polling.{enabled,scope}`，默认 enabled=false
-- **合并注意**：`model/channel_cache.go` 的 `GetRandomSatisfiedChannel` 是 upstream 热点函数，冲突时保留 WithClient 包装与轮询分支。
+- **合并注意**：`model/channel_cache.go` 的 `GetRandomSatisfiedChannel` 是 upstream 热点函数，冲突时保留 variadic 参数与轮询分支。
 
 ### 5. 渠道错误关键词规则引擎（channel error keyword rules）
 

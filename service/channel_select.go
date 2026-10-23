@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -14,7 +13,6 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
 	"github.com/QuantumNous/new-api/relaykit/types"
-	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -41,18 +39,6 @@ func AppendTaskPluginIdentityFilter(c *gin.Context, pluginKey string) {
 		TaskPluginChannelTypes: channelTypes,
 		TaskPluginKeys:         pluginKeys,
 	})
-}
-
-// GetPollingClientKey 返回渠道轮询的客户端 key;"user" 维度用 user id,"token" 维度用 token id。
-// c 为 nil 时返回空串(调用方不启用轮询)。
-func GetPollingClientKey(c *gin.Context) string {
-	if c == nil {
-		return ""
-	}
-	if setting.ChannelPollingScope == setting.ChannelPollingScopeToken {
-		return "t:" + strconv.Itoa(common.GetContextKeyInt(c, constant.ContextKeyTokenId))
-	}
-	return "u:" + strconv.Itoa(c.GetInt("id"))
 }
 
 type RetryParam struct {
@@ -162,7 +148,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannelWithClient(
+			channel, _ = model.GetRandomSatisfiedChannel(
 				autoGroup,
 				param.ModelName,
 				priorityRetry,
@@ -206,7 +192,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			break
 		}
 	} else {
-		channel, err = model.GetRandomSatisfiedChannelWithClient(
+		channel, err = model.GetRandomSatisfiedChannel(
 			param.TokenGroup,
 			param.ModelName,
 			param.GetRetry(),

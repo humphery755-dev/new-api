@@ -12,14 +12,13 @@ import (
 )
 
 const (
-	rankingCacheTTL             = 5 * time.Minute
-	rankingLeaderboardLimit     = 20
-	rankingUserLeaderboardLimit = 20
-	rankingHistoryLimit         = 10
-	rankingVendorLimit          = 5
-	rankingMoverLimit           = 6
-	rankingOthersLabel          = "Others"
-	rankingUnknownVendor        = "Unknown"
+	rankingCacheTTL         = 5 * time.Minute
+	rankingLeaderboardLimit = 20
+	rankingHistoryLimit     = 10
+	rankingVendorLimit      = 5
+	rankingMoverLimit       = 6
+	rankingOthersLabel      = "Others"
+	rankingUnknownVendor    = "Unknown"
 )
 
 type RankingsResponse struct {
@@ -53,14 +52,6 @@ type RankedVendor struct {
 	GrowthPct   float64 `json:"growth_pct"`
 	ModelsCount int     `json:"models_count"`
 	TopModel    string  `json:"top_model"`
-}
-
-type RankedUser struct {
-	Rank        int     `json:"rank"`
-	UserID      int     `json:"user_id"`
-	Username    string  `json:"username"`
-	TotalTokens int64   `json:"total_tokens"`
-	Share       float64 `json:"share"`
 }
 
 type RankingMover struct {
@@ -299,20 +290,6 @@ func buildRankedModels(totals []model.RankingQuotaTotal, totalTokens int64, prev
 			TotalTokens:  item.TotalTokens,
 			Share:        rankingShare(item.TotalTokens, totalTokens),
 			GrowthPct:    growth,
-		})
-	}
-	return rows
-}
-
-func buildRankedUsers(totals []model.RankingUserTotal, totalTokens int64) []RankedUser {
-	rows := make([]RankedUser, 0, len(totals))
-	for idx, item := range totals {
-		rows = append(rows, RankedUser{
-			Rank:        idx + 1,
-			UserID:      item.UserID,
-			Username:    item.Username,
-			TotalTokens: item.TotalTokens,
-			Share:       rankingShare(item.TotalTokens, totalTokens),
 		})
 	}
 	return rows

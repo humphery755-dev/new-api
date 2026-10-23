@@ -119,22 +119,14 @@ func GetRandomSatisfiedChannel(
 	model string,
 	retry int,
 	filters []dto.ChannelFilter,
-) (*Channel, error) {
-	return GetRandomSatisfiedChannelWithClient(group, model, retry, filters, "")
-}
-
-func GetRandomSatisfiedChannelWithClient(
-	group string,
-	model string,
-	retry int,
-	filters []dto.ChannelFilter,
-	pollingClientKey string,
+	pollingClientKey ...string,
 ) (*Channel, error) {
 	// if memory cache is disabled, get channel directly from database.
 	// DB 直查路径不参与轮询,轮询依赖内存缓存。
 	if !common.MemoryCacheEnabled {
 		return GetChannel(group, model, retry, filters)
 	}
+
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
@@ -196,8 +188,10 @@ func GetRandomSatisfiedChannelWithClient(
 	}
 
 	// 加权轮询分支:启用且带 clientKey 时在同优先级候选内轮流选择
-	if channel := selectChannelByPolling(pollingClientKey, model, targetChannels); channel != nil {
-		return channel, nil
+	if len(pollingClientKey) > 0 {
+		if channel := selectChannelByPolling(pollingClientKey[0], model, targetChannels); channel != nil {
+			return channel, nil
+		}
 	}
 
 	// smoothing factor and adjustment
