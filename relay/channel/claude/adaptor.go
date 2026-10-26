@@ -41,6 +41,15 @@ func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayIn
 	if err := relayconvert.ApplyClaudeThinkingModel(request, info); err != nil {
 		return nil, err
 	}
+	// Some GLM-style Anthropic-compatible upstreams answer a tool call with a
+	// server_tool_use block and embed the server-side tool_result in the same
+	// assistant turn; upstreams that validate tool ids reject that history
+	// (MiniMax answers 400 "tool result's tool id(...) not found"). Rewrite it
+	// per channel, gated by claude_server_tool_use_patch.channel_ids in
+	// custom-config.yaml.
+	if _, ok := setting.PatchServerToolUseChannels[info.GetChannelID()]; ok {
+		patchServerToolUseHistory(request)
+	}
 	// GLM-style Anthropic-compatible upstreams answer 400 when the thinking
 	// chain breaks: the history carries thinking blocks but the last assistant
 	// message does not. Patch that per channel, gated by

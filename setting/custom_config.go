@@ -38,12 +38,22 @@ type CustomConfig struct {
 		// 仅 GLM 风格 Anthropic 兼容上游可列入；官方 Anthropic 渠道禁止
 		ChannelIDs []int `yaml:"channel_ids"`
 	} `yaml:"claude_missing_thinking_patch"`
+	ClaudeServerToolUsePatch struct {
+		// 仅实测会因 server_tool_use/内嵌 tool_result 拒绝该历史的渠道可列入；
+		// 产生该形状的 GLM 渠道不要列入（其自身接受该形状，改写反伤 prompt cache）
+		ChannelIDs []int `yaml:"channel_ids"`
+	} `yaml:"claude_server_tool_use_patch"`
 }
 
 // PatchMissingThinkingChannels holds the channel IDs listed in
 // claude_missing_thinking_patch.channel_ids, built by LoadCustomConfig. Empty
 // map means no channel is patched. relay/channel/claude reads it per request.
 var PatchMissingThinkingChannels = map[int]struct{}{}
+
+// PatchServerToolUseChannels holds the channel IDs listed in
+// claude_server_tool_use_patch.channel_ids, built by LoadCustomConfig. Empty
+// map means no channel is patched. relay/channel/claude reads it per request.
+var PatchServerToolUseChannels = map[int]struct{}{}
 
 // DefaultCustomConfigPath returns the config path: the CUSTOM_CONFIG_PATH
 // environment variable when set, otherwise ./custom-config.yaml.
@@ -150,5 +160,11 @@ func (c *CustomConfig) Apply() error {
 		channels[id] = struct{}{}
 	}
 	PatchMissingThinkingChannels = channels
+
+	serverToolUseChannels := make(map[int]struct{}, len(c.ClaudeServerToolUsePatch.ChannelIDs))
+	for _, id := range c.ClaudeServerToolUsePatch.ChannelIDs {
+		serverToolUseChannels[id] = struct{}{}
+	}
+	PatchServerToolUseChannels = serverToolUseChannels
 	return nil
 }
