@@ -2,7 +2,7 @@
 
 > **用途**：本分支（v1alpha0.1）在 upstream（QuantumNous/new-api）main 之上的定制功能登记簿。
 > **AI 必读**：每次合并 upstream 或修改任何定制功能之前，先通读本文档，确认定制点分布，避免误删/漏合。
-> 最后更新：2026-10-26（新增 Claude server-tool-use 修复：GLM 编码端点产生的 server_tool_use + 内嵌 tool_result 历史在 MiniMax 等严格上游报 400 "tool id not found (2013)"，列入白名单的渠道改写为标准配对）
+> 最后更新：2026-10-27（missing-thinking patch 占位块修复：空串 `thinking:""` 被 tydic 的 Pydantic 网关判为字段缺失反而 400，改为非空 `"."`，跨渠道形状矩阵 5/10/30 互喂 9/9 全 200；实测确认生产者 GLM 渠道 30/34/35 接受自己产生的 server_tool_use 毒历史形状 → server-tool-use 白名单维持 [5,10,14]，无需改动；2026-10-26 新增 Claude server-tool-use 修复：GLM 编码端点产生的 server_tool_use + 内嵌 tool_result 历史在 MiniMax 等严格上游报 400 "tool id not found (2013)"，列入白名单的渠道改写为标准配对）
 
 ---
 
@@ -64,7 +64,7 @@ git stash pop
 ### 2. Claude missing-thinking patch
 
 - **状态**：✅ 完成（配置并入 custom-config.yaml，见下）
-- **行为**：会校验"思考链"的 Anthropic 兼容上游（DeepSeek `/anthropic` 端点、GLM 风格端点）在 **thinking 开启 + 请求以 `tool_result` 结尾 + 发起 tool_use 的 assistant 回合缺 thinking 块** 时返回 400 `The content[].thinking in the thinking mode must be passed back to the API`。同一会话被负载均衡轮换到不产生 thinking 块的上游（如 MiniMax adaptive 模式下的 tool_use 回合）时，历史中会残留缺 thinking 的 tool_use 回合，下一次落到严格上游且以 tool_result 结尾的请求即命中；**必须修复历史中全部此类回合**（实测只修一处仍 400，全部修复才 200）。列入 `claude_missing_thinking_patch.channel_ids` 的渠道，为历史中每个"含 tool_use 但无 thinking"的 assistant 回合插入占位 thinking 块。**官方 Anthropic 渠道禁止列入**（占位块无 signature 会被拒）。临时 workaround，上游不再校验思考链透传后移除。
+- **行为**：会校验"思考链"的 Anthropic 兼容上游（DeepSeek `/anthropic` 端点、GLM 风格端点）在 **thinking 开启 + 请求以 `tool_result` 结尾 + 发起 tool_use 的 assistant 回合缺 thinking 块** 时返回 400 `The content[].thinking in the thinking mode must be passed back to the API`。同一会话被负载均衡轮换到不产生 thinking 块的上游（如 MiniMax adaptive 模式下的 tool_use 回合）时，历史中会残留缺 thinking 的 tool_use 回合，下一次落到严格上游且以 tool_result 结尾的请求即命中；**必须修复历史中全部此类回合**（实测只修一处仍 400，全部修复才 200）。列入 `claude_missing_thinking_patch.channel_ids` 的渠道，为历史中每个"含 tool_use 但无 thinking"的 assistant 回合插入占位 thinking 块。**占位文本必须非空（`"."`，2026-10-27 修复）**：tydic-glm 的 Pydantic 网关把空串 `thinking:""` 判为字段缺失，反而报 400 `thinking.thinking: Field required`——实测 tydic 根本不校验思考链（无 thinking 块也 200），空占位块纯属帮倒忙；非空占位后 MiniMax/DeepSeek/tydic 三家全部兼容。**官方 Anthropic 渠道禁止列入**（占位块无 signature 会被拒）。临时 workaround，上游不再校验思考链透传后移除。
 - **文件**：
   - 接线：`relay/channel/claude/adaptor.go`（+8：import + `ConvertClaudeRequest` 内调用判断）
   - 新文件：`relay/channel/claude/adaptor_missing_thinking.go`（`patchMissingThinkingBlock` / `contentHasThinkingBlock` / `contentHasToolResultBlock` / `contentHasToolUseBlock`）、`relay/channel/claude/adaptor_missing_thinking_test.go`（测试；原 `adaptor_test.go` 已还原 upstream）
@@ -114,7 +114,7 @@ git stash pop
 ### 7. Claude server-tool-use 修复（server_tool_use + 内嵌 tool_result 归一化）
 
 - **状态**：✅ 完成（配置并入 custom-config.yaml）
-- **行为**：GLM 编码端点（bigmodel glm-coding-plan）会把客户端工具调用回成 assistant 消息内的 `server_tool_use` 块，并把服务端执行结果以 `tool_result` 块**内嵌在同一 assistant 回合**（而非标准 user 回合）。Claude Code 原样回放该历史；严格校验 tool id 的上游拒绝它——实测三种拒绝方式：MiniMax 400 `invalid params, tool result's tool id(...) not found (2013)`（只从 `tool_use` 块登记 id，且含内嵌 `tool_result` 的 assistant 消息整条不登记）；DeepSeek 400 `` `tool_use` ids were found without `tool_result` blocks immediately after ``（要求每个 assistant 回合以 `tool_use` 结尾、其 `tool_result` 在紧随其后的消息）；tydic-glm（172.168.5.101:9088，TYDIC-LLM 平台）400 Pydantic 校验 `Input tag 'server_tool_use' found using 'type' does not match any of the expected tags`（不认识该块类型）。列入 `claude_server_tool_use_patch.channel_ids` 的渠道改写：`server_tool_use`→`tool_use`，内嵌 `tool_result` 按 tool_use_id 配对提取，并把该 assistant 回合按每个 `tool_use` 切分为「`tool_use` 结尾 + 紧随 user 消息携带其 `tool_result`」的标准配对（连续 assistant 回合合并，避免角色连排）。实测改写后 MiniMax、DeepSeek、tydic 在 thinking+stream 真实条件下均 200。**产生该形状的 GLM 渠道不要列入**（其自身接受该形状，改写反伤 prompt cache）。防御性 patch：任何上游产生该形状都会毒化 MiniMax/DeepSeek/tydic 等严格上游。
+- **行为**：GLM 编码端点（bigmodel glm-coding-plan）会把客户端工具调用回成 assistant 消息内的 `server_tool_use` 块，并把服务端执行结果以 `tool_result` 块**内嵌在同一 assistant 回合**（而非标准 user 回合）。Claude Code 原样回放该历史；严格校验 tool id 的上游拒绝它——实测三种拒绝方式：MiniMax 400 `invalid params, tool result's tool id(...) not found (2013)`（只从 `tool_use` 块登记 id，且含内嵌 `tool_result` 的 assistant 消息整条不登记）；DeepSeek 400 `` `tool_use` ids were found without `tool_result` blocks immediately after ``（要求每个 assistant 回合以 `tool_use` 结尾、其 `tool_result` 在紧随其后的消息）；tydic-glm（172.168.5.101:9088，TYDIC-LLM 平台）400 Pydantic 校验 `Input tag 'server_tool_use' found using 'type' does not match any of the expected tags`（不认识该块类型）。列入 `claude_server_tool_use_patch.channel_ids` 的渠道改写：`server_tool_use`→`tool_use`，内嵌 `tool_result` 按 tool_use_id 配对提取，并把该 assistant 回合按每个 `tool_use` 切分为「`tool_use` 结尾 + 紧随 user 消息携带其 `tool_result`」的标准配对（连续 assistant 回合合并，避免角色连排）。实测改写后 MiniMax、DeepSeek、tydic 在 thinking+stream 真实条件下均 200。**产生该形状的 GLM 渠道不要列入**（改写反伤 prompt cache）——2026-10-27 实测确认：渠道 30/34/35 直连上游 + 经网关端到端重放完整毒历史均 200（每渠道各中一次），如预期接受自己产生的形状，无需改写。防御性 patch：任何上游产生该形状都会毒化 MiniMax/DeepSeek/tydic 等严格上游。
 - **文件**：
   - 接线：`relay/channel/claude/adaptor.go`（+8：import 已复用 `setting`，`ConvertClaudeRequest` 内调用判断）
   - 新文件：`relay/channel/claude/adaptor_server_tool_use.go`（`patchServerToolUseHistory`）、`relay/channel/claude/adaptor_server_tool_use_test.go`（测试）
@@ -145,5 +145,5 @@ git stash pop
 - [x] 2026-10-23：配置外置化重构（本文件第二节所列 5 项配置全部并入 custom-config.yaml；删除前端 3 个设置区块、恢复 model/option.go 与 web/src/features/system-settings/ 为 upstream 原样）
 - [x] 2026-10-26：新增 Claude server-tool-use 修复（见第二节 7）
 - [ ] missing-thinking patch 为临时 workaround：上游不再校验思考链透传后移除（adaptor.go 内 grep "GLM"）
-- [ ] server-tool-use 修复为防御性 patch：若 GLM 编码端点不再内联 tool_result / MiniMax 不再校验该形状，可复测后考虑移除
+- [ ] server-tool-use 修复为防御性 patch：若 GLM 编码端点不再内联 tool_result / MiniMax 不再校验该形状，可复测后考虑移除（生产者侧 30/34/35 已于 2026-10-27 实测无需 patch）
 - [ ] 排行榜区块的 admin 权限细化（如需对非 root 隐藏，当前跟随 rankings 页权限）

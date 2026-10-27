@@ -60,21 +60,21 @@ func TestConvertClaudeRequestPatchesMissingThinking(t *testing.T) {
 			channelListed: true,
 			thinking:      thinkingEnabled,
 			messages:      `[{"role":"user","content":"hi"},` + toolUseTurn + `,` + toolResult + `]`,
-			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":""},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
+			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"."},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
 		},
 		{
 			name:          "adaptive thinking gets placeholder",
 			channelListed: true,
 			thinking:      thinkingAdaptive,
 			messages:      `[{"role":"user","content":"hi"},` + toolUseTurn + `,` + toolResult + `]`,
-			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":""},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
+			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"."},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
 		},
 		{
 			name:          "earlier thinking history does not change the repair",
 			channelListed: true,
 			thinking:      thinkingEnabled,
 			messages:      `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"earlier","signature":"sig"},{"type":"text","text":"ok"}]},{"role":"user","content":"again"},` + toolUseTurn + `,` + toolResult + `]`,
-			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"earlier","signature":"sig"},{"type":"text","text":"ok"}]},{"role":"user","content":"again"},{"role":"assistant","content":[{"type":"thinking","thinking":""},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
+			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"earlier","signature":"sig"},{"type":"text","text":"ok"}]},{"role":"user","content":"again"},{"role":"assistant","content":[{"type":"thinking","thinking":"."},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
 		},
 		{
 			name:          "tool result without a tool call turn untouched",
@@ -88,7 +88,7 @@ func TestConvertClaudeRequestPatchesMissingThinking(t *testing.T) {
 			channelListed: true,
 			thinking:      thinkingEnabled,
 			messages:      `[{"role":"user","content":"hi"},` + toolUseTurn + `,` + toolResult + `,{"role":"user","content":"again"},` + thinkingTurn + `,` + toolResult + `,{"role":"user","content":"more"},` + toolUseTurn + `,` + toolResult + `]`,
-			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":""},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `,{"role":"user","content":"again"},` + thinkingTurn + `,` + toolResult + `,{"role":"user","content":"more"},{"role":"assistant","content":[{"type":"thinking","thinking":""},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
+			want:          `[{"role":"user","content":"hi"},{"role":"assistant","content":[{"type":"thinking","thinking":"."},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `,{"role":"user","content":"again"},` + thinkingTurn + `,` + toolResult + `,{"role":"user","content":"more"},{"role":"assistant","content":[{"type":"thinking","thinking":"."},{"type":"tool_use","id":"toolu_01A","name":"get_weather","input":{"city":"SF"}}]},` + toolResult + `]`,
 		},
 	}
 	for _, tt := range tests {

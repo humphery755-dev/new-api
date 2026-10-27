@@ -29,7 +29,11 @@ func patchMissingThinkingBlock(request *dto.ClaudeRequest) {
 	if !contentHasToolResultBlock(request.Messages[len(request.Messages)-1].Content) {
 		return
 	}
-	placeholder := map[string]any{"type": "thinking", "thinking": ""}
+	// A non-empty placeholder is required: Pydantic-style Anthropic gateways
+	// (for example the TYDIC-LLM platform behind channel tydic-glm) treat an
+	// empty thinking string as a missing field and answer 400 "thinking:
+	// Field required". DeepSeek and MiniMax accept both, so use ".".
+	placeholder := map[string]any{"type": "thinking", "thinking": "."}
 	for i := range request.Messages {
 		if request.Messages[i].Role != "assistant" {
 			continue
